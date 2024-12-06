@@ -2,3 +2,5 @@ pdf2image
 torch
 torchvision
 Pillow
+fastapi
+uvicorn
