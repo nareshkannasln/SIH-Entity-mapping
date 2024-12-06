@@ -1,6 +1,7 @@
+fastapi
 pdf2image
 torch
 torchvision
-Pillow
-fastapi
 uvicorn
+aiofiles
+python-multipart
