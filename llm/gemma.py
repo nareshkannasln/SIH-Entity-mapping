@@ -1,12 +1,11 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import StreamingResponse
 from langchain_ollama import OllamaLLM  # Updated import for Ollama
-import json
 
 app = FastAPI()
 
 # Initialize Llama 3.1 model from Ollama
-llm = OllamaLLM(model="gemma2:9b", temperature=0)
+llm = OllamaLLM(model="gemma2:9b", temperature=0.2)
 
 # Define the prompt template for JSON validation
 template = """
