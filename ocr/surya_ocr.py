@@ -1,8 +1,6 @@
 import os
 import time
 import logging
-from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import JSONResponse
 from PIL import Image
 from io import BytesIO
 from surya.ocr import run_ocr
@@ -14,8 +12,6 @@ import torch
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-app = FastAPI()
 
 # Configuration
 detection_batch_size = 20
@@ -57,21 +53,21 @@ def process_image(image, langs, det_model, det_processor, rec_model, rec_process
     )
     return predictions
 
-@app.post("/extract")
-async def extract_text(file: UploadFile = File(...)):
+def extract_text_from_image(file_path):
     """
-    Endpoint to extract text from an uploaded image.
+    Extract text from an image file.
     """
-    if file.content_type not in ["image/jpeg", "image/png"]:
-        raise HTTPException(status_code=400, detail="Invalid image format. Only JPEG and PNG are supported.")
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
     
     try:
         # Open and resize the image
-        image = Image.open(BytesIO(await file.read()))
-        image.thumbnail((1024, 1024), Image.ANTIALIAS)  # Resize image to a maximum of 1024x1024
+        image = Image.open(file_path)
+        image.thumbnail((1024, 1024), Image.LANCZOS)  # Use LANCZOS for high-quality downsizing
+        # Resize image to a maximum of 1024x1024
         
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Invalid image file.")
+        raise ValueError("Invalid image file.")
     
     # Load models
     load_models_once()
@@ -85,9 +81,9 @@ async def extract_text(file: UploadFile = File(...)):
     # Extract text from predictions
     ans = " ".join([each.text for each in predictions[0].text_lines])
 
-    return JSONResponse(content={"extracted_text": ans, "execution_time": execution_time})
+    return {"extracted_text": ans, "execution_time": execution_time}
 
-# Main entry point
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8002)
+# if __name__ == "__main__":
+#     sample_file_path = "/path/to/your/sample/image.jpg"
+#     result = extract_text_from_image(sample_file_path)
+#     print(result)

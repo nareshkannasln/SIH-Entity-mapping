@@ -1,11 +1,8 @@
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import StreamingResponse
 from langchain_ollama import OllamaLLM  # Updated import for Ollama
-
-app = FastAPI()
+import asyncio
 
 # Initialize Llama 3.1 model from Ollama
-llm = OllamaLLM(model="gemma2:9b", temperature=0.2)
+llm = OllamaLLM(model="gemma2:9b", temperature=0)
 
 # Define the prompt template for JSON validation
 template = """
@@ -51,34 +48,14 @@ Array should only contain english translated value for the key.
 Translations should be perfect and no errors should be there.
 """
 
-@app.post("/entity")
-async def entity_extraction(request: Request):
-    data = await request.json()
-
-    # Validate required fields
-    if 'json_input' not in data or 'raw_text' not in data or 'document_type' not in data:
-        raise HTTPException(status_code=400, detail="Missing required fields: 'json_input', 'raw_text', 'document_type'")
-
-    json_input = data['json_input']
-    raw_text = data['raw_text']
-    document_type = data['document_type']
-
-    # Validate JSON input format
-    if not isinstance(json_input, dict):
-        raise HTTPException(status_code=400, detail="Invalid JSON input format. It should be a dictionary.")
-
+async def extract_entity(json_input, raw_text):
     # Format the prompt with the input data
     array_schema = [f"Obtained {key} here" for key in json_input.keys()]
-    formatted_prompt = template.format(json_input, raw_text, [document_type] + array_schema)
+    formatted_prompt = template.format(json_input, raw_text, ["Obtained document_type here"] + array_schema)
 
-    # Stream the result
-    async def generate():
-        result = llm.stream(formatted_prompt)
-        async for chunk in result:
-            yield chunk
+    # Execute the chain
+    result = await llm.stream(formatted_prompt)
 
-    return StreamingResponse(generate(), media_type='text/plain')
-
-if __name__ == '__main__':
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001, log_level="debug")
+    # Stream the result and yield each chunk to the caller
+    async for chunk in result:
+        yield chunk

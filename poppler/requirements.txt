@@ -5,3 +5,4 @@ torchvision
 uvicorn
 aiofiles
 python-multipart
+logger
