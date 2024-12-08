@@ -22,8 +22,39 @@ schema = {
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+poppler_path = r"C:\Program Files\Release-24.08.0-0\poppler-24.08.0\Library\bin"
 # Define the directory to save images
-IMAGES_DIR = "/home/sumith/Downloads/server/poppler/images"
+
+IMAGES_DIR = os.path.normpath("E:/Project/SIH 2024 I/NER/SIH-Entity-mapping/poppler/images")
+
+import socket
+
+def get_local_ip():
+    try:
+        # Create a socket connection to a known external address
+        # Use Google's public DNS server address with a dummy port
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))
+            local_ip = s.getsockname()[0]  # Get the local IP address
+        return local_ip
+    except Exception as e:
+        print(f"Error occurred: {e}")
+        return None
+
+# Get the IP address
+local_ip = get_local_ip()
+
+if local_ip:
+    # Set the variables
+    ocr_server = local_ip
+    llm_server = local_ip
+    print(f"OCR Server IP: {ocr_server}")
+    print(f"LLM Server IP: {llm_server}")
+else:
+    print("Failed to determine the local IP address.")
+    exit()
+
+ocr_server = "192.168.101.238"
 
 # Function to clear the images directory
 def clear_images_directory():
@@ -33,6 +64,7 @@ def clear_images_directory():
 
 # Clear images directory at startup
 clear_images_directory()
+
 
 # Function to save uploaded files asynchronously
 async def save_file(file: UploadFile, extension: str) -> str:
@@ -72,7 +104,7 @@ async def extract_text_from_image(image_path: str) -> str:
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
-                "http://localhost:8001/extract-text",
+                f"http://{ocr_server}:8001/extract-text",
                 files={"file": (os.path.basename(image_path), image_data, "image/png")}
             )
             response.raise_for_status()
@@ -87,7 +119,7 @@ async def extract_text_from_image(image_path: str) -> str:
 
 # Function to convert PDF to images and process them
 async def convert_pdf_to_images(pdf_path: str) -> list:
-    images = convert_from_path(pdf_path, poppler_path="/usr/bin", dpi=200)
+    images = convert_from_path(pdf_path, poppler_path=poppler_path, dpi=200)
     transform = transforms.ToTensor()
 
     def process_image(i, image):
@@ -120,7 +152,7 @@ async def process_pdf_file(file: UploadFile = File(...)):
             async with httpx.AsyncClient() as client:
                 try:
                     response = await client.post(
-                        "http://localhost:8002/process-data",
+                        f"http://{llm_server}:8002/process-data",
                         json={"raw_text": combined_text, "schema": schema}
                     )
                     response.raise_for_status()
@@ -139,7 +171,7 @@ async def process_pdf_file(file: UploadFile = File(...)):
             async with httpx.AsyncClient() as client:
                 try:
                     response = await client.post(
-                        "http://localhost:8002/process-data",
+                        f"http://{llm_server}:8002/process-data",
                         json={"raw_text": text['extracted_text'], "schema": schema}
                     )
                     response.raise_for_status()
