@@ -120,14 +120,14 @@ async def process_file(file: UploadFile = File(...)):
                 extracted_texts.append(text['extracted_text'])
 
             combined_text = "\n\n".join(extracted_texts)
-            logger.info("Text extraction from PDF completed")
-            logger.info("combined_text\n", combined_text)
+            # logger.info("Text extraction from PDF completed")
+            # logger.info("combined_text\n", combined_text)
             return {"extracted_text": combined_text}
 
         elif file.content_type.startswith("image/"):
             image_path = await save_image_file(file)
             text = await extract_text_from_image(image_path)
-            logger.info("Extracted Tex\nt", text['extracted_text'])
+            # logger.info("Extracted Tex\nt", text['extracted_text'])
             return {"extracted_text": text['extracted_text']}
 
         else:

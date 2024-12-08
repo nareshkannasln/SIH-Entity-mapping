@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, File, UploadFile
-from surya_ocr import extract_text_from_image
+from surya_ocr import extract_text_from_image, load_models_once
 import uvicorn
 import os
 import time
@@ -8,6 +8,9 @@ from pathlib import Path
 import logging
 
 app = FastAPI()
+
+
+load_models_once()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -48,6 +51,7 @@ async def process_data(file: UploadFile = File(...)) -> dict:
         
         
         # Return the result
+        print(f"Extracted text\n", result['extracted_text'])
         return result
     
     except HTTPException as e:

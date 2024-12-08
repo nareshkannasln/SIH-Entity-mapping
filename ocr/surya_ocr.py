@@ -17,7 +17,13 @@ logger = logging.getLogger(__name__)
 detection_batch_size = 20
 recognition_batch_size = 20
 langs = ["en", "ta"]  # Supported languages
-device = "cuda" if torch.cuda.is_available() else "cpu"
+device = "cuda" 
+device = torch.device("cuda")
+
+if not torch.cuda.is_available():
+    print("GPU not available, stopping programming")
+    exit()
+
 
 # Model variables (lazy-loaded)
 det_processor, det_model, rec_model, rec_processor = None, None, None, None
@@ -70,7 +76,7 @@ def extract_text_from_image(file_path):
         raise ValueError("Invalid image file.")
     
     # Load models
-    load_models_once()
+
 
     # Perform OCR
     start_time = time.time()
