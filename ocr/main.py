@@ -45,7 +45,7 @@ async def process_data(file: UploadFile = File(...)) -> dict:
         
         # Call the extract_text_from_image function with the saved file path
         result = extract_text_from_image(str(file_path))
-        logger.info("Text extraction successful")
+        
         
         # Return the result
         return result

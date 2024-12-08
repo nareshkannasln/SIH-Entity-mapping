@@ -1,14 +1,12 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 import aiofiles
 import time
-from process_pdf import process_pdf_file
 import httpx
 import os
 import logging
 from PIL import Image
 import shutil
 from pdf2image import convert_from_path
-import torch
 from torchvision import transforms
 import concurrent.futures
 
@@ -108,7 +106,7 @@ async def process_file(file: UploadFile = File(...)):
     processed_images = []  # Declare processed_images here
     image_path = None  # Declare image_path here to avoid UnboundLocalError
     try:
-        logger.info(f"Processing file: {file.filename} ({file.content_type})")
+        logger.info(f"@@@@@ Processing file: {file.filename} ({file.content_type})")
         if file.content_type == "application/pdf":
             pdf_path = await save_file(file, "pdf")
             logger.info(f"PDF saved at {pdf_path}")
@@ -119,17 +117,17 @@ async def process_file(file: UploadFile = File(...)):
             extracted_texts = []
             for image_path in processed_images:
                 text = await extract_text_from_image(image_path)
-                extracted_texts.append(text)
+                extracted_texts.append(text['extracted_text'])
 
-            combined_text = "\n\n".join(extracted_texts['extracted_text'])
+            combined_text = "\n\n".join(extracted_texts)
             logger.info("Text extraction from PDF completed")
+            logger.info("combined_text\n", combined_text)
             return {"extracted_text": combined_text}
 
         elif file.content_type.startswith("image/"):
             image_path = await save_image_file(file)
             text = await extract_text_from_image(image_path)
-            logger.info("Extracted Text: " + text['extracted_text'])
-            logger.info("-----------------------------------------------------")
+            logger.info("Extracted Tex\nt", text['extracted_text'])
             return {"extracted_text": text['extracted_text']}
 
         else:
@@ -144,6 +142,8 @@ async def process_file(file: UploadFile = File(...)):
         elif file.content_type.startswith("image/") and image_path:
             if os.path.exists(image_path):
                 os.remove(image_path)
+        
+        logger.info("-----------------------------------------------------")
 
 # Main entry point for running the app
 if __name__ == "__main__":

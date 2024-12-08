@@ -6,7 +6,7 @@ import uvicorn
 
 app = FastAPI()
 
-@app.post("/extract_entity")
+@app.post("/process-data")
 async def process_data(request: Request):
     try:
         data = await request.json()
@@ -22,12 +22,7 @@ async def process_data(request: Request):
         # Call the extract_entity function from gemma.py
         result = extract_entity(schema, raw_text)
 
-        # Stream the response
-        async def response_generator():
-            for chunk in result:
-                yield chunk
-
-        return StreamingResponse(response_generator(), media_type="application/json")
+        return StreamingResponse(result, media_type="application/json")
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -53,9 +53,13 @@ async def extract_entity(json_input, raw_text):
     array_schema = [f"Obtained {key} here" for key in json_input.keys()]
     formatted_prompt = template.format(json_input, raw_text, ["Obtained document_type here"] + array_schema)
 
-    # Execute the chain
-    result = await llm.stream(formatted_prompt)
+    result = llm.stream(formatted_prompt)
+
+    ans = ""
 
     # Stream the result and yield each chunk to the caller
-    async for chunk in result:
+    for chunk in result:
         yield chunk
+        ans += chunk
+    
+    print(ans)
