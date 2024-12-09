@@ -156,6 +156,8 @@ async def process_pdf_file(file: UploadFile = File(...)):
                 extracted_texts.append(text['extracted_text'])
 
             combined_text = "\n\n".join(extracted_texts)
+
+            print("Extracted text:\n", combined_text)
             async with httpx.AsyncClient(timeout=30.0) as client:  # Increase timeout to 30 seconds
                 try:
                     response = await client.post(
@@ -188,8 +190,10 @@ async def process_pdf_file(file: UploadFile = File(...)):
                 except Exception as e:
                     logger.error(f"HTTP request error: {e}")
                     raise HTTPException(status_code=500, detail="Unable to connect to data processing API")
-
-                return response.json()
+                
+                json_response = response.json()
+                print("Extracted text:\n", json_response['extracted_text'])
+                return json_response
 
         else:
             logger.error("Invalid file format")
