@@ -14,8 +14,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Configuration
-detection_batch_size = 20
-recognition_batch_size = 20
+detection_batch_size = 30
+recognition_batch_size = 30
 langs = ["en", "ta"]  # Supported languages
 device = "cuda" 
 device = torch.device("cuda")

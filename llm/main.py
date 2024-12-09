@@ -20,9 +20,10 @@ async def process_data(request: Request):
             raise HTTPException(status_code=400, detail="Invalid JSON format for schema")
 
         # Call the extract_entity function from gemma.py
-        result = extract_entity(schema, raw_text)
+        result = await extract_entity(schema, raw_text)
 
-        return StreamingResponse(result, media_type="application/json")
+        # return StreamingResponse(result, media_type="application/json")
+        return {"result": result}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

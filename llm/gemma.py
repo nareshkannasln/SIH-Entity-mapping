@@ -59,7 +59,7 @@ async def extract_entity(json_input, raw_text):
 
     # Stream the result and yield each chunk to the caller
     for chunk in result:
-        yield chunk
         ans += chunk
+        print(ans)
     
-    print(ans)
+    return ans

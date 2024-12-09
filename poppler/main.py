@@ -4,8 +4,10 @@ import uvicorn
 
 from process_pdf import process_pdf_file
 
+
 # Initialize the FastAPI application
 app = FastAPI()
+
 
 # Configure logger
 logging.basicConfig(level=logging.INFO)

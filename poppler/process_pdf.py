@@ -25,36 +25,40 @@ logger = logging.getLogger(__name__)
 poppler_path = r"C:\Program Files\Release-24.08.0-0\poppler-24.08.0\Library\bin"
 # Define the directory to save images
 
-IMAGES_DIR = os.path.normpath("E:/Project/SIH 2024 I/NER/SIH-Entity-mapping/poppler/images")
+IMAGES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "images")
 
-import socket
+# import socket
 
-def get_local_ip():
-    try:
-        # Create a socket connection to a known external address
-        # Use Google's public DNS server address with a dummy port
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            s.connect(("8.8.8.8", 80))
-            local_ip = s.getsockname()[0]  # Get the local IP address
-        return local_ip
-    except Exception as e:
-        print(f"Error occurred: {e}")
-        return None
+# def get_local_ip():
+#     try:
+#         # Create a socket connection to a known external address
+#         # Use Google's public DNS server address with a dummy port
+#         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+#             s.connect(("8.8.8.8", 80))
+#             local_ip = s.getsockname()[0]  # Get the local IP address
+#         return local_ip
+#     except Exception as e:
+#         print(f"Error occurred: {e}")
+#         return None
 
-# Get the IP address
-local_ip = get_local_ip()
+# # Get the IP address
+# local_ip = get_local_ip()
 
-if local_ip:
-    # Set the variables
-    ocr_server = local_ip
-    llm_server = local_ip
-    print(f"OCR Server IP: {ocr_server}")
-    print(f"LLM Server IP: {llm_server}")
-else:
-    print("Failed to determine the local IP address.")
-    exit()
+# if local_ip:
+#     # Set the variables
+#     ocr_server = local_ip
+#     llm_server = local_ip
+#     print(f"OCR Server IP: {ocr_server}")
+#     print(f"LLM Server IP: {llm_server}")
+# else:
+#     print("Failed to determine the local IP address.")
+#     exit()
 
-ocr_server = "192.168.101.238"
+# ocr_server = "192.168.101.238"
+ocr_server = "localhost"
+local_ip = ocr_server
+localhost = local_ip
+llm_server = "localhost"
 
 # Function to clear the images directory
 def clear_images_directory():
@@ -101,7 +105,7 @@ async def extract_text_from_image(image_path: str) -> str:
     async with aiofiles.open(image_path, "rb") as f:
         image_data = await f.read()
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:  # Increase timeout to 30 seconds
         try:
             response = await client.post(
                 f"http://{ocr_server}:8001/extract-text",
@@ -119,7 +123,8 @@ async def extract_text_from_image(image_path: str) -> str:
 
 # Function to convert PDF to images and process them
 async def convert_pdf_to_images(pdf_path: str) -> list:
-    images = convert_from_path(pdf_path, poppler_path=poppler_path, dpi=200)
+    # images = convert_from_path(pdf_path, poppler_path=poppler_path, dpi=200) # windows
+    images = convert_from_path(pdf_path, dpi=200) # linux
     transform = transforms.ToTensor()
 
     def process_image(i, image):
@@ -149,7 +154,7 @@ async def process_pdf_file(file: UploadFile = File(...)):
                 extracted_texts.append(text['extracted_text'])
 
             combined_text = "\n\n".join(extracted_texts)
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=40.0) as client:  # Increase timeout to 60 seconds
                 try:
                     response = await client.post(
                         f"http://{llm_server}:8002/process-data",
@@ -168,7 +173,7 @@ async def process_pdf_file(file: UploadFile = File(...)):
         elif file.content_type.startswith("image/"):
             image_path = await save_image_file(file)
             text = await extract_text_from_image(image_path)
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:  # Increase timeout to 30 seconds
                 try:
                     response = await client.post(
                         f"http://{llm_server}:8002/process-data",
