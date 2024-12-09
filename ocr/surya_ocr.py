@@ -87,6 +87,7 @@ def extract_text_from_image(file_path):
     # Extract text from predictions
     ans = " ".join([each.text for each in predictions[0].text_lines])
 
+    print("Extracted text:\n",ans)
     return {"extracted_text": ans, "execution_time": execution_time}
 
 # if __name__ == "__main__":
