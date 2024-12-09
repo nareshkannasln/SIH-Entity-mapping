@@ -1,0 +1,97 @@
+/* General Container */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: linear-gradient(to bottom right, #0060a0, #004a74);
+}
+
+/* Card Styling */
+.login-card {
+  background-color: #ffffff;
+  padding: 40px 30px;
+  border-radius: 10px;
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  width: 350px;
+}
+
+/* Titles and Subtitle */
+.login-title {
+  font-size: 1.8rem;
+  color: #004a74;
+  margin-bottom: 5px;
+}
+
+.login-subtitle {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 20px;
+}
+
+/* Input Fields */
+.input-field {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 1rem;
+  background-color: #f9f9f9;
+}
+
+/* Role Selection */
+.role-selection-toggle {
+  display: flex;
+  justify-content: space-around;
+  margin: 20px 0;
+}
+
+.role-button {
+  background-color: #f0f0f0;
+  color: #333;
+  border: 1px solid #ccc;
+  border-radius: 25px;
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 45%;
+}
+
+.role-button.active {
+  background-color: #0078d4;
+  color: #ffffff;
+  border: 1px solid #0078d4;
+}
+
+.role-button:hover {
+  background-color: #005bb5;
+  color: white;
+}
+
+/* Login Button */
+.login-button {
+  background-color: #0078d4;
+  color: white;
+  border: none;
+  padding: 12px;
+  width: 100%;
+  border-radius: 5px;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: all 0.3s ease;
+}
+
+.login-button:hover {
+  background-color: #005bb5;
+}
+
+/* Error Message */
+.error-message {
+  color: #ff4d4d;
+  font-size: 0.9rem;
+  margin-top: 10px;
+}

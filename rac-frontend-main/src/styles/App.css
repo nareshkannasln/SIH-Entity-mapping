@@ -1,0 +1,199 @@
+/* General Page Layout */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f4f4f9;
+  color: #333;
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.container {
+  width: 80%;
+  max-width: 450px;
+  margin: 40px auto;
+  padding: 30px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Heading Styles */
+h1 {
+  color: #0060a0;
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 2rem;
+}
+
+h2 {
+  color: #005b8a;
+  font-size: 1.2rem;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+/* Form Elements */
+input,
+button {
+  padding: 12px;
+  margin: 10px 0;
+  width: 100%;
+  border-radius: 5px;
+  font-size: 16px;
+  transition: all 0.3s ease-in-out;
+}
+
+input {
+  border: 1px solid #ddd;
+  background-color: #f9f9f9;
+}
+
+input:focus {
+  border-color: #0060a0;
+  background-color: #fff;
+  outline: none;
+}
+
+button {
+  background-color: #0060a0;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+button:hover {
+  background-color: #004c74;
+  transform: translateY(-2px);
+}
+
+button:active {
+  transform: translateY(2px);
+}
+
+/* Error and Success Message */
+.error-message {
+  color: #e74c3c;
+  text-align: center;
+}
+
+.success-message {
+  color: #2ecc71;
+  text-align: center;
+}
+
+/* Link Styling */
+a {
+  color: #0060a0;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Navbar Styling */
+.navbar {
+  background-color: #727272;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navbar ul {
+  list-style-type: none;
+  display: flex;
+  justify-content: center;
+  padding: 0;
+}
+
+.navbar li {
+  margin: 0 15px;
+}
+
+.navbar a {
+  color: rgb(0, 42, 209);
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.navbar a:hover {
+  text-decoration: underline;
+}
+
+/* Footer Styling */
+footer {
+  background-color: #333;
+  color: white;
+  text-align: center;
+  padding: 15px;
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+footer a {
+  color: #0060a0;
+}
+
+/* Advanced Layout for Buttons */
+.role-selection-toggle {
+  display: flex;
+  justify-content: space-evenly;
+  margin-top: 20px;
+}
+
+.role-button {
+  padding: 12px 24px;
+  border: 1px solid #0060a0;
+  background-color: #fff;
+  color: #0060a0;
+  cursor: pointer;
+  border-radius: 50px;
+  font-size: 16px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.role-button:hover {
+  background-color: #0060a0;
+  color: white;
+  transform: translateY(-2px);
+}
+
+.role-button.active {
+  background-color: #0060a0;
+  color: white;
+}
+
+/* Responsive Layout */
+@media (max-width: 768px) {
+  .container {
+    width: 90%;
+    padding: 20px;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    width: 100%;
+    padding: 15px;
+  }
+
+  h1 {
+    font-size: 1.3rem;
+  }
+
+  .navbar li {
+    margin: 0 10px;
+  }
+}
+

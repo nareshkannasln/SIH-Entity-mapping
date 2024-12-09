@@ -1,0 +1,83 @@
+/* General Container */
+.signup-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: linear-gradient(to bottom right, #0078d4, #005bb5); /* Same as LoginPage */
+  }
+  
+  /* Card Styling */
+  .form-card {
+    background-color: #ffffff;
+    padding: 40px 30px;
+    border-radius: 10px;
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    width: 400px;
+  }
+  
+  /* Titles and Subtitle */
+  .form-title {
+    font-size: 1.8rem;
+    color: #005bb5;
+    margin-bottom: 10px;
+  }
+  
+  .form-subtitle {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 20px;
+  }
+  
+  /* Input Fields */
+  .form-input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 1rem;
+    background-color: #f9f9f9;
+  }
+  
+  /* Button */
+  .form-button {
+    background-color: #0078d4;
+    color: white;
+    border: none;
+    padding: 12px;
+    width: 100%;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .form-button:hover {
+    background-color: #005bb5;
+  }
+  
+  /* Message Styling */
+  .form-message {
+    color: #0078d4;
+    font-size: 0.9rem;
+    margin-top: 10px;
+  }
+  
+  /* Redirect Text */
+  .redirect-text {
+    margin-top: 20px;
+    font-size: 0.9rem;
+    color: #555;
+  }
+  
+  .redirect-text a {
+    color: #0078d4;
+    text-decoration: none;
+  }
+  
+  .redirect-text a:hover {
+    text-decoration: underline;
+  }
+  
