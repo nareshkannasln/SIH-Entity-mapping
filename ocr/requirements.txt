@@ -5,3 +5,4 @@ surya-ocr
 fastapi
 uvicorn
 python-multipart
+torchvision

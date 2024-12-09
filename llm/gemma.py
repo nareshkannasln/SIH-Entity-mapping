@@ -34,7 +34,7 @@ Document Type:
 
 Strict Instructions:
 - Output only the array result.
-- Ensure the output adheres strictly to array formatting, with no additional characters outside the array structure.
+- Ensure the output adheres strictly to array formatting, don't include any additional text in the response.
 - Include the type of the document in the 0th index of the array.
 - Do not include any debugging information in the output.
 - Maintain the order of values for each keys in the JSON for the array result.

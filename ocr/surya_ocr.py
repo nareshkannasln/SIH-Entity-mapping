@@ -9,9 +9,11 @@ from surya.model.recognition.model import load_model as load_rec_model
 from surya.model.recognition.processor import load_processor as load_rec_processor
 import torch
 
-# Configure logging
+# Configure logging-+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+torch.cuda.empty_cache()
 
 # Configuration
 detection_batch_size = 30
@@ -22,7 +24,7 @@ device = torch.device("cuda")
 
 if not torch.cuda.is_available():
     print("GPU not available, stopping programming")
-    exit()
+#     #exit()
 
 
 # Model variables (lazy-loaded)
