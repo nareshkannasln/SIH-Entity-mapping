@@ -1,8 +1,4 @@
-from langchain_ollama import OllamaLLM  # Updated import for Ollama
-import asyncio
 
-# Initialize Llama 3.1 model from Ollama
-llm = OllamaLLM(model="gemma2:9b", temperature=0)
 
 # Define the prompt template for JSON validation
 template = """
@@ -48,11 +44,12 @@ Array should only contain english translated value for the key.
 Translations should be perfect and no errors should be there.
 """
 
-async def extract_entity(json_input, raw_text):
+async def extract_entity(json_input, raw_text, llm):
     # Format the prompt with the input data
     array_schema = [f"Obtained {key} here" for key in json_input.keys()]
     formatted_prompt = template.format(json_input, raw_text, ["Obtained document_type here"] + array_schema)
 
+    print("Started streaming...")
     result = llm.stream(formatted_prompt)
 
     ans = ""

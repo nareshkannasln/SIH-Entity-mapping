@@ -19,6 +19,8 @@ schema = {
   "class": "String, Class of the candidate(Such as First Class, Second Class, etc.)"
 }
 
+# schema_
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -154,7 +156,7 @@ async def process_pdf_file(file: UploadFile = File(...)):
                 extracted_texts.append(text['extracted_text'])
 
             combined_text = "\n\n".join(extracted_texts)
-            async with httpx.AsyncClient(timeout=40.0) as client:  # Increase timeout to 60 seconds
+            async with httpx.AsyncClient(timeout=30.0) as client:  # Increase timeout to 30 seconds
                 try:
                     response = await client.post(
                         f"http://{llm_server}:8002/process-data",
