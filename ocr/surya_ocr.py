@@ -2,30 +2,25 @@ import os
 import time
 import logging
 from PIL import Image
-from io import BytesIO
 from surya.ocr import run_ocr
 from surya.model.detection.model import load_model as load_det_model, load_processor as load_det_processor
 from surya.model.recognition.model import load_model as load_rec_model
 from surya.model.recognition.processor import load_processor as load_rec_processor
 import torch
 
-# Configure logging-+
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-torch.cuda.empty_cache()
 
 # Configuration
 detection_batch_size = 30
 recognition_batch_size = 30
 langs = ["en"]  # Supported languages
-device = "cuda" 
-device = torch.device("cuda")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 if not torch.cuda.is_available():
-    print("GPU not available, stopping programming")
-#     #exit()
-
+    logger.error("GPU not available, stopping program")
+    exit()
 
 # Model variables (lazy-loaded)
 det_processor, det_model, rec_model, rec_processor = None, None, None, None
@@ -72,13 +67,11 @@ def extract_text_from_image(file_path):
         # Open and resize the image
         image = Image.open(file_path)
         image.thumbnail((1024, 1024), Image.LANCZOS)  # Use LANCZOS for high-quality downsizing
-        # Resize image to a maximum of 1024x1024
-        
     except Exception as e:
         raise ValueError("Invalid image file.")
     
     # Load models
-
+    load_models_once()
 
     # Perform OCR
     start_time = time.time()
@@ -89,7 +82,7 @@ def extract_text_from_image(file_path):
     # Extract text from predictions
     ans = " ".join([each.text for each in predictions[0].text_lines])
 
-    print("Extracted text:\n",ans)
+    logger.info("Extracted text:\n%s", ans)
     return {"extracted_text": ans, "execution_time": execution_time}
 
 # if __name__ == "__main__":

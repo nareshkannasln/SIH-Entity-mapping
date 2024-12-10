@@ -7,18 +7,13 @@ from PIL import Image
 from pathlib import Path
 import logging
 import torch
+import aiofiles
 
 if torch.cuda.is_available():
     print("GPU Available")
 else:
     print("GPU not accessible, stopping program")
     exit()
-
-def clear_torch_cache():
-    torch.cuda.empty_cache()
-    torch.cuda.ipc_collect()
-
-clear_torch_cache()
 
 app = FastAPI()
 
@@ -33,12 +28,11 @@ BASE_DIR = Path(os.getenv("OCR_BASE_DIR", "/home/sumith/Downloads/server/ocr"))
 
 @app.post("/extract-text")
 async def process_data(file: UploadFile = File(...)) -> dict:
-    # Store the file path for deletion after processing
     file_path = None
     try:
         # Validate if the file is an image
+        file.file.seek(0)  # Reset file pointer
         try:
-            file.file.seek(0)  # Reset file pointer
             image = Image.open(file.file)
             image.verify()  # Verify image integrity
             file.file.seek(0)  # Reset again for further operations
@@ -54,16 +48,15 @@ async def process_data(file: UploadFile = File(...)) -> dict:
         timestamp = int(time.time())
         file_path = image_dir / f"{timestamp}_{file.filename}"
         
-        # Save the uploaded file
-        with file_path.open("wb") as buffer:
+        async with aiofiles.open(file_path, "wb") as buffer:
+            await buffer.write(await file.read())
             buffer.write(await file.read())
         
         # Call the extract_text_from_image function with the saved file path
         result = extract_text_from_image(str(file_path))
         
-        
         # Return the result
-        print(f"Extracted text\n", result['extracted_text'])
+        logger.info(f"Extracted text: {result['extracted_text']}")
         return result
     
     except HTTPException as e:
@@ -74,9 +67,9 @@ async def process_data(file: UploadFile = File(...)) -> dict:
     
     finally:
         # Delete the image file after use if it was saved
-        if file_path and os.path.exists(file_path):
+        if file_path and file_path.exists():
             try:
-                os.remove(file_path)
+                file_path.unlink()
                 logger.info(f"Deleted image file: {file_path}")
             except Exception as e:
                 logger.error(f"Failed to delete image file {file_path}: {e}")

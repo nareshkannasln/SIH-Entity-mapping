@@ -1,4 +1,6 @@
+from langchain_ollama import OllamaLLM
 
+llm = OllamaLLM(model="gemma2:9b", temperature=0.1)
 
 # Define the prompt template for JSON validation
 template = """
@@ -28,6 +30,13 @@ Document Type:
 - bonafide_certificate
 - other
 
+Exact output format:
+{}
+
+Output the trsnalated value for the 'String' based data in the raw text.
+Array should only contain english translated value for the key.
+Translations should be perfect and no errors should be there.
+
 Strict Instructions:
 - Output only the array result.
 - Ensure the output adheres strictly to array formatting, don't include any additional text in the response.
@@ -35,16 +44,9 @@ Strict Instructions:
 - Do not include any debugging information in the output.
 - Maintain the order of values for each keys in the JSON for the array result.
 - Your output should only start from '[' and end with ']'.
-
-Exact output format:
-{}
-
-Output the trsnalated value for the key "name" in the raw text.
-Array should only contain english translated value for the key.
-Translations should be perfect and no errors should be there.
 """
 
-async def extract_entity(json_input, raw_text, llm):
+async def extract_entity(json_input, raw_text):
     # Format the prompt with the input data
     array_schema = [f"Obtained {key} here" for key in json_input.keys()]
     formatted_prompt = template.format(json_input, raw_text, ["Obtained document_type here"] + array_schema)
