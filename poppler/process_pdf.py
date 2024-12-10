@@ -10,7 +10,7 @@ from pdf2image import convert_from_path
 from torchvision import transforms
 import concurrent.futures
 
-schema_marksheet = {
+schema = {
   "name": "String,",
   "date_of_birth": "Date Format (DD-MM-YYYY) Date format should be in numbers",
   "degree": "String",
@@ -27,81 +27,32 @@ schema_birth_certificate = {
   "date_of_birth": "Date Format (DD-MM-YYYY) Date format should be in numbers"
 }
 
-# schema_
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 poppler_path = r"C:\Program Files\Release-24.08.0-0\poppler-24.08.0\Library\bin"
-# Define the directory to save images
-
 IMAGES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "images")
 
-# import socket
-
-# def get_local_ip():
-#     try:
-#         # Create a socket connection to a known external address
-#         # Use Google's public DNS server address with a dummy port
-#         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-#             s.connect(("8.8.8.8", 80))
-#             local_ip = s.getsockname()[0]  # Get the local IP address
-#         return local_ip
-#     except Exception as e:
-#         print(f"Error occurred: {e}")
-#         return None
-
-# # Get the IP address
-# local_ip = get_local_ip()
-
-# if local_ip:
-#     # Set the variables
-#     ocr_server = local_ip
-#     llm_server = local_ip
-#     print(f"OCR Server IP: {ocr_server}")
-#     print(f"LLM Server IP: {llm_server}")
-# else:
-#     print("Failed to determine the local IP address.")
-#     exit()
-
-# ocr_server = "192.168.101.238"
 ocr_server = "localhost"
-local_ip = ocr_server
-localhost = local_ip
 llm_server = "localhost"
 
-# Function to clear the images directory
 def clear_images_directory():
     if os.path.exists(IMAGES_DIR):
         shutil.rmtree(IMAGES_DIR)
     os.makedirs(IMAGES_DIR)
 
-# Clear images directory at startup
 clear_images_directory()
 
-
-# Function to save uploaded files asynchronously
 async def save_file(file: UploadFile, extension: str) -> str:
     file_path = os.path.join(IMAGES_DIR, f"uploaded_{int(time.time())}.{extension}")
-    file.file.seek(0)  # Reset file pointer
+    file.file.seek(0)
     
-    if extension in ["png", "jpg", "jpeg"]:
-        try:
-            image = Image.open(file.file)
-            image.verify()  # Verify image integrity
-            image = Image.open(file.file)  # Reopen after verification for saving
-            image.save(file_path, format=extension.upper() if extension != 'jpg' else 'JPEG')
-        except Exception as e:
-            logger.error(f"Failed to process image file: {e}")
-            raise HTTPException(status_code=400, detail="Invalid or corrupted image file")
-    else:
-        async with aiofiles.open(file_path, "wb") as f:
-            await f.write(await file.read())
+    async with aiofiles.open(file_path, "wb") as f:
+        await f.write(await file.read())
     
     logger.info(f"File saved at {file_path}")
     return file_path
 
-# Function to save only image files
 async def save_image_file(file: UploadFile) -> str:
     allowed_formats = {"image/png": "png", "image/jpeg": "jpg"}
     extension = allowed_formats.get(file.content_type)
@@ -110,12 +61,11 @@ async def save_image_file(file: UploadFile) -> str:
         raise HTTPException(status_code=400, detail="Unsupported image format")
     return await save_file(file, extension)
 
-# Function to extract text from an image using an external API
 async def extract_text_from_image(image_path: str) -> str:
     async with aiofiles.open(image_path, "rb") as f:
         image_data = await f.read()
 
-    async with httpx.AsyncClient(timeout=30.0) as client:  # Increase timeout to 30 seconds
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(
                 f"http://{ocr_server}:8001/extract-text",
@@ -131,10 +81,8 @@ async def extract_text_from_image(image_path: str) -> str:
 
         return response.json()
 
-# Function to convert PDF to images and process them
 async def convert_pdf_to_images(pdf_path: str) -> list:
-    # images = convert_from_path(pdf_path, poppler_path=poppler_path, dpi=200) # windows
-    images = convert_from_path(pdf_path, dpi=200) # linux
+    images = convert_from_path(pdf_path, dpi=200)
     transform = transforms.ToTensor()
 
     def process_image(i, image):
@@ -151,8 +99,8 @@ async def convert_pdf_to_images(pdf_path: str) -> list:
     return processed_images
 
 async def process_pdf_file(file: UploadFile = File(...)):
-    processed_images = []  # Declare processed_images here
-    image_path = None  # Declare image_path here to avoid UnboundLocalError
+    processed_images = []
+    image_path = None
     try:
         if file.content_type == "application/pdf":
             pdf_path = await save_file(file, "pdf")
@@ -166,7 +114,7 @@ async def process_pdf_file(file: UploadFile = File(...)):
             combined_text = "\n\n".join(extracted_texts)
 
             print("Extracted text:\n", combined_text)
-            async with httpx.AsyncClient(timeout=30.0) as client:  # Increase timeout to 30 seconds
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 try:
                     response = await client.post(
                         f"http://{llm_server}:8002/process-data",
@@ -185,7 +133,7 @@ async def process_pdf_file(file: UploadFile = File(...)):
         elif file.content_type.startswith("image/"):
             image_path = await save_image_file(file)
             text = await extract_text_from_image(image_path)
-            async with httpx.AsyncClient(timeout=30.0) as client:  # Increase timeout to 30 seconds
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 try:
                     response = await client.post(
                         f"http://{llm_server}:8002/process-data",
@@ -207,7 +155,6 @@ async def process_pdf_file(file: UploadFile = File(...)):
             logger.error("Invalid file format")
             raise HTTPException(status_code=400, detail="Invalid file format. Only PDF or image files are allowed.")
     finally:
-        # Delete only the images processed in this request
         if file.content_type == "application/pdf" and processed_images:
             for image_path in processed_images:
                 if os.path.exists(image_path):
