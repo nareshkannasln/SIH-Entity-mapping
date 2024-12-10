@@ -19,7 +19,7 @@ schema = {
   "class": "String, Class of the candidate(Such as First Class, Second Class, etc.)"
 }
 
-schema_birth_certificate = {
+schema = {
   "name": "String, Avoid prefix or suffix denotations but Initial should be included",
   "age": "Number",
   "father_name": "String, Avoid prefix or suffix denotations but Initial should be included",
