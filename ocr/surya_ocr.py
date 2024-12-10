@@ -18,7 +18,7 @@ torch.cuda.empty_cache()
 # Configuration
 detection_batch_size = 30
 recognition_batch_size = 30
-langs = ["en", "ta"]  # Supported languages
+langs = ["en"]  # Supported languages
 device = "cuda" 
 device = torch.device("cuda")
 

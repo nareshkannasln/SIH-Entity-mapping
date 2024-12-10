@@ -4,13 +4,19 @@ import json
 from gemma import extract_entity
 import uvicorn
 from load_loader import load_model
-# import torch
+import torch
 
-# if torch.cuda.is_available():
-#     print("GPU Available")
-# else:
-#     print("GPU not accessible, stopping program")
-#     exit()
+if torch.cuda.is_available():
+    print("GPU Available")
+else:
+    print("GPU not accessible, stopping program")
+    exit()
+
+def clear_torch_cache():
+    torch.cuda.empty_cache()
+    torch.cuda.ipc_collect()
+
+clear_torch_cache()
 
 model = load_model()
 print(f"Model loaded successfully\nModel Ref: {model}")

@@ -1,9 +1,15 @@
 from fastapi import FastAPI, File, UploadFile
 import logging
 import uvicorn
+import torch
 
 from process_pdf import process_pdf_file
 
+def clear_torch_cache():
+    torch.cuda.empty_cache()
+    torch.cuda.ipc_collect()
+
+clear_torch_cache()
 
 # Initialize the FastAPI application
 app = FastAPI()

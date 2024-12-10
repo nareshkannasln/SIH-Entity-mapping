@@ -6,9 +6,21 @@ import time
 from PIL import Image
 from pathlib import Path
 import logging
+import torch
+
+if torch.cuda.is_available():
+    print("GPU Available")
+else:
+    print("GPU not accessible, stopping program")
+    exit()
+
+def clear_torch_cache():
+    torch.cuda.empty_cache()
+    torch.cuda.ipc_collect()
+
+clear_torch_cache()
 
 app = FastAPI()
-
 
 load_models_once()
 

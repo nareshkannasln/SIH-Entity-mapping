@@ -2,6 +2,13 @@ from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 import mimetypes
 import uvicorn
+import torch
+
+if torch.cuda.is_available():
+    print("GPU Available")
+else:
+    print("GPU not accessible, stopping program")
+    exit()
 
 app = FastAPI()
 

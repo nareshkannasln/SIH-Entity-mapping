@@ -10,13 +10,21 @@ from pdf2image import convert_from_path
 from torchvision import transforms
 import concurrent.futures
 
-schema = {
-  "name": "String, Avoid prefix or suffix denotations but Initial should be included",
+schema_marksheet = {
+  "name": "String,",
   "date_of_birth": "Date Format (DD-MM-YYYY) Date format should be in numbers",
   "degree": "String",
   "cgpa": "Float",
   "percentage": "Float",
   "class": "String, Class of the candidate(Such as First Class, Second Class, etc.)"
+}
+
+schema_birth_certificate = {
+  "name": "String, Avoid prefix or suffix denotations but Initial should be included",
+  "age": "Number",
+  "father_name": "String, Avoid prefix or suffix denotations but Initial should be included",
+  "mother_name": "String, Avoid prefix or suffix denotations but Initial should be included",
+  "date_of_birth": "Date Format (DD-MM-YYYY) Date format should be in numbers"
 }
 
 # schema_
