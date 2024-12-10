@@ -3,12 +3,31 @@ from fastapi.responses import JSONResponse
 import mimetypes
 import uvicorn
 import torch
+import socket
 
 if torch.cuda.is_available():
     print("GPU Available")
 else:
     print("GPU not accessible, stopping program")
     exit()
+
+def get_local_ip():
+    try:
+        # Use a dummy connection to determine the local IP address
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))
+            local_ip = s.getsockname()[0]
+        return local_ip
+    except Exception as e:
+        print(f"Error retrieving local IP: {e}")
+        return None
+
+local_ip = get_local_ip()
+if local_ip:
+    print(f"Your device's local IP address is: {local_ip}")
+    print(f"Share this IP with the port (e.g., {local_ip}:12345) for local communication.")
+else:
+    print("Could not retrieve the local IP address.")
 
 app = FastAPI()
 
