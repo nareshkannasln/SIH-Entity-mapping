@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from mongodb_config import users_collection, jobs_collection, applications_collection
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from poppler.process_pdf import process_pdf_file
+from process_pdf import process_pdf_file
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr
 import jwt
@@ -111,7 +111,7 @@ async def validate(
 ):
     
     if schema is None or schema not in prompt_schema:
-        return JSONResponse(content={"error": "Schema is required"}, status_code=400)
+        yield JSONResponse(content={"error": "Schema is required"}, status_code=400)
     
     schema = prompt_schema[schema]
     index = 1
