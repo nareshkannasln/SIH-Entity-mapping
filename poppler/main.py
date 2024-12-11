@@ -4,6 +4,8 @@ import uvicorn
 import torch
 
 from process_pdf import process_pdf_file
+from pydantic import BaseModel
+from typing import Dict
 
 def clear_torch_cache():
     torch.cuda.empty_cache()
@@ -19,11 +21,13 @@ app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Endpoint to process uploaded files
-@app.post("/validate")
-async def validate(file: UploadFile = File(...)):
-    return await process_pdf_file(file)
+class Schema(BaseModel):
+    schema: Dict
 
+# Endpoint to process uploaded files and schema
+@app.post("/validate")
+async def validate(file: UploadFile = File(...), schema: Schema = dict):
+    return await process_pdf_file(file, schema)
 
 # Main entry point for running the app
 if __name__ == "__main__":

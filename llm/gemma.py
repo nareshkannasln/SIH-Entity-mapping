@@ -1,6 +1,11 @@
 from langchain_ollama import OllamaLLM
+import logging
 
-llm = OllamaLLM(model="gemma2:9b", temperature=0.1)
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+llm = OllamaLLM(model="gemma2:9b", temperature=0)
 
 # Define the prompt template for JSON validation
 template = """
@@ -25,9 +30,14 @@ Raw Text: {}
 
 Document Type: 
 - marksheet
-- community_certificate
-- transfer_certificate
-- bonafide_certificate
+- community
+- birth_cert
+- bonafide
+- gate_score_card
+- degree_cert
+- person_with_disability
+- aadhaar
+- community_cert
 - other
 
 Exact output format:
@@ -46,6 +56,44 @@ Strict Instructions:
 - Your output should only start from '[' and end with ']'.
 """
 
+def convert_extracted_to_list(extracted_string):
+    """
+    Convert the extracted entity mapping output from a string to a list.
+
+    Args:
+        extracted_string (str): The extracted output in string format.
+
+    Returns:
+        list: The extracted output as a list.
+    """
+    try:
+        return eval(extracted_string)
+    except Exception as e:
+        raise ValueError(f"Error converting extracted string to list: {e}")
+
+def compare_values(extracted_values_string, runtime_values):
+    """
+    Compare extracted values with runtime inputs.
+    
+    Args:
+        extracted_values_string (str): Extracted values as a string.
+        runtime_values (list): Runtime inputs to validate against.
+
+    Returns:
+        dict: Match results and mismatched entities.
+    """
+    # Convert extracted values string to list
+    extracted_values = convert_extracted_to_list(extracted_values_string)
+
+    results = {"status": "matched", "mismatches": []}
+
+    for i, (extracted_value, runtime_value) in enumerate(zip(extracted_values[1:], runtime_values)):
+        if extracted_value.lower() != runtime_value.lower():
+            results["status"] = "mismatched"
+            results["mismatches"].append({"index": i, "extracted": extracted_value, "runtime": runtime_value})
+
+    return results
+
 async def extract_entity(json_input, raw_text):
     # Format the prompt with the input data
     array_schema = [f"Obtained {key} here" for key in json_input.keys()]
@@ -59,6 +107,6 @@ async def extract_entity(json_input, raw_text):
     # Stream the result and yield each chunk to the caller
     for chunk in result:
         ans += chunk
-        # print(ans)
+        logger.info(ans)
     
     return ans

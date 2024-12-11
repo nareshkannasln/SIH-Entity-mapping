@@ -38,7 +38,7 @@ async def process_data(request: Request):
         # Process the data (example function call)
         result = await extract_entity(schema, raw_text)
 
-        return JSONResponse(content=result)
+        return JSONResponse(content={'result': result})
 
     except ValueError as e:
         logger.error(f"ValueError: {e}")

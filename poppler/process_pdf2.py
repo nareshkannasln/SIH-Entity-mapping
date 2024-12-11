@@ -10,77 +10,6 @@ from pdf2image import convert_from_path
 from torchvision import transforms
 import concurrent.futures
 
-# schema = {
-#   "name": "String,",
-#   "date_of_birth": "Date Format (DD-MM-YYYY) Date format should be in numbers",
-#   "degree": "String",
-#   "cgpa": "Float",
-#   "percentage": "Float",
-#   "class": "String, Class of the candidate(Such as First Class, Second Class, etc.)"
-# }
-
-schema = {
-  "name": "String, Avoid prefix or suffix denotations but Initial should be included",
-  "age": "Number",
-  "father_name": "String, Avoid prefix or suffix denotations but Initial should be included",
-  "mother_name": "String, Avoid prefix or suffix denotations but Initial should be included",
-  "date_of_birth": "Date Format (DD-MM-YYYY) Date format should be in numbers"
-}
-
-
-prompt_schema = {
-    'birth_certificate': {
-        'name': 'String',
-        'date_of_birth': 'Date Format (DD-MM-YYYY)'
-    },
-    'degree_certificate': {
-        'name': 'String',
-        'university': 'String',
-        'date_of_birth': 'Date Format (DD-MM-YYYY)',
-        'degree': 'String',
-        'cgpa': 'Float',
-        'percentage': 'Float',
-        'class': 'String',
-        'qualification_degree': 'String'
-    },
-    'proof_of_class': {
-        'name': 'String',
-        'class': 'String'
-    },
-    'provisional_certificate': {
-        'name': 'String',
-        'degree': 'String',
-        'university': 'String',
-        'passing_year': 'Number',
-        'qualification_degree': 'String'
-    },
-    'experience_certificate': {
-        'from_date': 'String (YYYY-MM-DD)',
-        'to_date': 'String (YYYY-MM-DD)'
-    },
-    'gate_score_card': {
-        'name': 'String',
-        'year': 'Number',
-        'marks': 'Number',
-        'rank': 'Number'
-    },
-    'proof_of_category': {
-        'name': 'String',
-        'category': 'String'
-    },
-    'proof_of_address': {
-        'name': 'String',
-        'address': 'String'
-    },
-    'phd_certificate': {
-        'name': 'String',
-        'university': 'String',
-        'Date_of_reg': 'String (YYYY-MM-DD)',
-        'title_of_project': 'String',
-        'no_of_papers_published': 'Integer',
-        'no_of_conference_attended': 'Integer'
-    }
-}
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -153,7 +82,8 @@ async def convert_pdf_to_images(pdf_path: str) -> list:
 
     return processed_images
 
-async def process_pdf_file(file: UploadFile = File(...)):
+async def process_pdf_file(file: UploadFile = File(...), schema: str = None):
+
     processed_images = []
     image_path = None
     try:
@@ -168,7 +98,6 @@ async def process_pdf_file(file: UploadFile = File(...)):
 
             combined_text = "\n\n".join(extracted_texts)
 
-            print("Extracted text:\n", combined_text)
             async with httpx.AsyncClient(timeout=30.0) as client:
                 try:
                     response = await client.post(
@@ -202,9 +131,7 @@ async def process_pdf_file(file: UploadFile = File(...)):
                     logger.error(f"HTTP request error: {e}")
                     raise HTTPException(status_code=500, detail="Unable to connect to data processing API")
                 
-                json_response = response.json()
-                print("Extracted text:\n", json_response['extracted_text'])
-                return json_response
+                return response.json()
 
         else:
             logger.error("Invalid file format")

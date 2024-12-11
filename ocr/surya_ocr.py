@@ -85,7 +85,7 @@ def extract_text_from_image(file_path):
     logger.info("Extracted text:\n%s", ans)
     return {"extracted_text": ans, "execution_time": execution_time}
 
-# if __name__ == "__main__":
-#     sample_file_path = "/path/to/your/sample/image.jpg"
-#     result = extract_text_from_image(sample_file_path)
-#     print(result)
+if __name__ == "__main__":
+    sample_file_path = "/path/to/your/sample/image.jpg"
+    result = extract_text_from_image(sample_file_path)
+    print(result)
