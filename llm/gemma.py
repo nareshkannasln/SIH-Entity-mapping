@@ -1,5 +1,6 @@
 from langchain_ollama import OllamaLLM
 import logging
+import torch
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -95,6 +96,7 @@ def compare_values(extracted_values_string, runtime_values):
     return results
 
 async def extract_entity(json_input, raw_text):
+    torch.cuda.empty_cache()
     # Format the prompt with the input data
     array_schema = [f"Obtained {key} here" for key in json_input.keys()]
     formatted_prompt = template.format(json_input, raw_text, ["Obtained document_type here"] + array_schema)

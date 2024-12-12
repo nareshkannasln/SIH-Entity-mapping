@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 poppler_path = r"C:\Program Files\Release-24.08.0-0\poppler-24.08.0\Library\bin"
 IMAGES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "images")
 
-ocr_server = "localhost"
+ocr_server = "192.168.238.238"
 llm_server = "localhost"
 
 def clear_images_directory():

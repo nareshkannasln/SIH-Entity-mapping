@@ -58,7 +58,7 @@ prompt_schema = {
         "date_of_birth": "String format: DD-MM-YYYY",
         "address": "String"
     },
-    "birth_certificate": {
+    "birth_cert": {
         "name": "String",
         "date_of_birth": "Date, format: DD-MM-YYYY"
     },
@@ -66,7 +66,7 @@ prompt_schema = {
         "name": "String",
         "date_of_birth": "Date, Format: DD-MM-YYYY"
     },
-    "degree_certificate": {
+    "degree_cert": {
         "name": "String",
         "university": "String",
         "date_of_birth": "Date Format (DD-MM-YYYY)",
@@ -80,14 +80,14 @@ prompt_schema = {
         "name": "String",
         "class": "String"
     },
-    "provisional_certificate": {
+    "provisional_cert": {
         "name": "String",
         "degree": "String",
         "university": "String",
         "passing_year": "Integer",
         "qualification_degree": "String"
     },
-    "experience_certificate": {
+    "experience_cert": {
         "from_date": "String Format(YYYY-MM-DD)",
         "to_date": "String Format(YYYY-MM-DD)"
     },
@@ -106,7 +106,7 @@ prompt_schema = {
         "name": "String",
         "address": "String"
     },
-    "phd_certificate": {
+    "phd_cert": {
         "name": "String",
         "university": "String",
         "Date_of_reg": "String (YYYY-MM-DD)",
@@ -145,7 +145,8 @@ async def validate(
     
     document_type = schema
     userDetails = await get_user_details(credentials, application_id)
-    print(userDetails)
+    biodata = userDetails['biodata']
+    education = userDetails['education']
     
     if schema is None or schema not in prompt_schema:
         return JSONResponse(content={"error": "Schema is required"}, status_code=400)
@@ -153,20 +154,27 @@ async def validate(
     schema = prompt_schema[schema]
     result = await process_pdf_file(file, schema)
     try:
-        result = eval(result)
+        result = eval(result['result'])
     except Exception as e:
         logger.error(f"Error evaluating result: {e}")
         return JSONResponse(content={"error": "Error processing the file"}, status_code=500)
     
+    print("LLM Result: ", result)
     if result[0] != document_type:
-        return JSONResponse(content={"error": "Document type mismatch"}, status_code=400)
+        return JSONResponse(content={"error": f"Document type mismatch, please provide {document_type} in this section."}, status_code=400)
     
     index = 1
-    for key in schema:
-        if schema[key] != result[index]:
-            return JSONResponse(content={"error": f"Field {key} mismatch"}, status_code=400)
+    error_response = ""
+    is_all_valid = True
+    for key in schema.keys():
+        if key in biodata and biodata[key] != result[index]:
+            is_all_valid = False
+            error_response += f"Field {key} mismatch, Value in your filled biodata: {biodata[key]} and Value in the document: {result[index]}"
         index += 1
 
+    if not is_all_valid:
+        return JSONResponse(content={"error": error_response}, status_code=400)
+    
     return JSONResponse(content={"message": "Document is valid"}, status_code=200)
 
 # User registration model
