@@ -60,15 +60,16 @@ prompt_schema = {
     },
     "birth_cert": {
         "name": "String",
-        "date_of_birth": "Date, format: DD-MM-YYYY"
+        "date_of_birth": "Date, format: DD-MM-YYYY",
+        "father_name": "String",
+        "mother_name": "String"
     },
     "marksheet": {
         "name": "String",
         "date_of_birth": "Date, Format: DD-MM-YYYY",
         "father_name": "String",
         "mother_name": "String",
-        "roll_number": "Integer",
-        "total_marks": "Integer"
+        "roll_number": "Integer"
     },
     "degree_cert": {
         "name": "String",
@@ -97,6 +98,7 @@ prompt_schema = {
     },
     "gate_score_card": {
         "name": "String",
+        "registration_number": "String, Mixed of string and Number",
         "year": "Integer(YYYY), Year of the GATE examination",
         "marks_out_of_100": "Float, 0.0 to 100.0",
         "all_india_rank_in_this_paper": "Integer",

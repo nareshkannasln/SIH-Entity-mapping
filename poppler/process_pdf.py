@@ -71,11 +71,11 @@ async def save_image_file(file: UploadFile, document_type: str) -> str:
         raise HTTPException(status_code=400, detail="Unsupported image format")
     
     normal_path = await save_file(file, extension)
-    if document_type == "gate_score":
-        return remove_watermark(normal_path)
     return normal_path
 
-async def extract_text_from_image(image_path: str) -> str:
+async def extract_text_from_image(image_path: str, document_type) -> str:
+    if document_type == "gate_score":
+        return remove_watermark(image_path)
     async with aiofiles.open(image_path, "rb") as f:
         image_data = await f.read()
 
@@ -123,7 +123,7 @@ async def process_pdf_file(file: UploadFile = File(...), schema: str = None, doc
 
             extracted_texts = []
             for image_path in processed_images:
-                text = await extract_text_from_image(image_path)
+                text = await extract_text_from_image(image_path, document_type)
                 extracted_texts.append(text['extracted_text'])
 
             combined_text = "\n\n".join(extracted_texts)
@@ -146,7 +146,7 @@ async def process_pdf_file(file: UploadFile = File(...), schema: str = None, doc
 
         elif file.content_type.startswith("image/"):
             image_path = await save_image_file(file, document_type)
-            text = await extract_text_from_image(image_path)
+            text = await extract_text_from_image(image_path, document_type)
             async with httpx.AsyncClient(timeout=30.0) as client:
                 try:
                     response = await client.post(
