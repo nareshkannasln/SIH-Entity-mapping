@@ -15,6 +15,11 @@ You are a wonderful entity extraction and translation model. You are given a JSO
 Identify the corresponding value in the raw text and extract the value. The value is a string that follows the key in the raw text.
 Try possible variations of the key to extract the value. For example, if the key is "name", try extracting the value using "name", "Name", "NAME", etc.
 Transform the extracted value to the correct data type. For example, if the key is "total_mark", the value should be transformed to a number.
+incase of many totals found go for the grand total only
+We can go for another example where the score can be more than once at that point it should give the value of "total_mark" as an array or vector of all the scores available
+then we come for the "all india rank" where it is also an number
+incase if the grand total is not found print the sum of total marks as the grand total.
+
 Output the result as an array with the extracted values in the order of the keys in the JSON input.
 Try translating the raw text to English to check if the raw text is in a different language.
 If value for the key is not found, output ''(this is the string with 0 length) for that index.
@@ -44,8 +49,9 @@ Document Type:
 Exact output format:
 {}
 
-Output the trsnalated value for the 'String' based data in the raw text.
+Output the translated value for the 'String' based data in the raw text.
 Array should only contain english translated value for the key.
+
 Translations should be perfect and no errors should be there.
 
 Strict Instructions:

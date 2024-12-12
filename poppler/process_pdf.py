@@ -9,6 +9,26 @@ import shutil
 from pdf2image import convert_from_path
 from torchvision import transforms
 import concurrent.futures
+import cv2
+import numpy as np
+from datetime import datetime
+
+# Function to remove watermark from an image using thresholding
+def remove_watermark(image_path):
+    # Read the image
+    img = cv2.imread(image_path, 1)
+
+    # Apply a threshold to remove the watermark
+    img1 = cv2.imread(image_path)
+    _, thresh = cv2.threshold(img1, 150, 255, cv2.THRESH_BINARY)
+
+    # Generate a timestamp for the output file name
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    output_path = f"gate_score_without_watermark_{timestamp}.jpg"
+
+    # Save the image after thresholding (watermark removed)
+    cv2.imwrite(output_path, thresh)
+    return output_path
 
 
 logging.basicConfig(level=logging.INFO)
@@ -18,7 +38,13 @@ poppler_path = r"C:\Program Files\Release-24.08.0-0\poppler-24.08.0\Library\bin"
 IMAGES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "images")
 
 ocr_server = "192.168.238.238"
-llm_server = "localhost"
+llm_server = "192.168.238.69"
+
+# ocr_server = "localhost"
+# llm_server = "localhost"
+
+# ocr_server = "192.168.219.7"
+# llm_server = "192.168.238.69"
 
 def clear_images_directory():
     if os.path.exists(IMAGES_DIR):
@@ -37,13 +63,17 @@ async def save_file(file: UploadFile, extension: str) -> str:
     logger.info(f"File saved at {file_path}")
     return file_path
 
-async def save_image_file(file: UploadFile) -> str:
+async def save_image_file(file: UploadFile, document_type: str) -> str:
     allowed_formats = {"image/png": "png", "image/jpeg": "jpg"}
     extension = allowed_formats.get(file.content_type)
     if not extension:
         logger.error(f"Unsupported image format: {file.content_type}")
         raise HTTPException(status_code=400, detail="Unsupported image format")
-    return await save_file(file, extension)
+    
+    normal_path = await save_file(file, extension)
+    if document_type == "gate_score":
+        return remove_watermark(normal_path)
+    return normal_path
 
 async def extract_text_from_image(image_path: str) -> str:
     async with aiofiles.open(image_path, "rb") as f:
@@ -82,7 +112,7 @@ async def convert_pdf_to_images(pdf_path: str) -> list:
 
     return processed_images
 
-async def process_pdf_file(file: UploadFile = File(...), schema: str = None):
+async def process_pdf_file(file: UploadFile = File(...), schema: str = None, document_type: str = None):
 
     processed_images = []
     image_path = None
@@ -115,7 +145,7 @@ async def process_pdf_file(file: UploadFile = File(...), schema: str = None):
                 return response.json()
 
         elif file.content_type.startswith("image/"):
-            image_path = await save_image_file(file)
+            image_path = await save_image_file(file, document_type)
             text = await extract_text_from_image(image_path)
             async with httpx.AsyncClient(timeout=30.0) as client:
                 try:

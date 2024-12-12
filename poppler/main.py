@@ -16,7 +16,6 @@ from datetime import date
 from fastapi.responses import StreamingResponse
 
 
-
 def clear_torch_cache():
     torch.cuda.empty_cache()
     torch.cuda.ipc_collect()
@@ -56,7 +55,8 @@ prompt_schema = {
         "name": "String",
         "aadhaar_number": "Integer, format: 12 digit number",
         "date_of_birth": "String format: DD-MM-YYYY",
-        "address": "String"
+        "address": "String",
+        "gender": "Male|Female|Other"
     },
     "birth_cert": {
         "name": "String",
@@ -64,7 +64,11 @@ prompt_schema = {
     },
     "marksheet": {
         "name": "String",
-        "date_of_birth": "Date, Format: DD-MM-YYYY"
+        "date_of_birth": "Date, Format: DD-MM-YYYY",
+        "father_name": "String",
+        "mother_name": "String",
+        "roll_number": "Integer",
+        "total_marks": "Integer"
     },
     "degree_cert": {
         "name": "String",
@@ -142,7 +146,6 @@ async def validate(
     schema: str = Form(...),
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
-    
     document_type = schema
     userDetails = await get_user_details(credentials, application_id)
     biodata = userDetails['biodata']
@@ -152,7 +155,8 @@ async def validate(
         return JSONResponse(content={"error": "Schema is required"}, status_code=400)
     
     schema = prompt_schema[schema]
-    result = await process_pdf_file(file, schema)
+
+    result = await process_pdf_file(file, schema, document_type)
     try:
         result = eval(result['result'])
     except Exception as e:
@@ -164,18 +168,22 @@ async def validate(
         return JSONResponse(content={"error": f"Document type mismatch, please provide {document_type} in this section."}, status_code=400)
     
     index = 1
-    error_response = ""
+    messages = []
     is_all_valid = True
     for key in schema.keys():
-        if key in biodata and biodata[key] != result[index]:
+        value = result[index]
+        messages.append({'key': key, 'value': value})
+        # Assuming validation logic here, update is_all_valid accordingly
+        # For demonstration, let's assume any empty value is invalid
+        if not value:
             is_all_valid = False
-            error_response += f"Field {key} mismatch, Value in your filled biodata: {biodata[key]} and Value in the document: {result[index]}"
         index += 1
 
-    if not is_all_valid:
-        return JSONResponse(content={"error": error_response}, status_code=400)
-    
-    return JSONResponse(content={"message": "Document is valid"}, status_code=200)
+    if is_all_valid:
+        return JSONResponse(content={"message": "Document is valid", "messages": messages}, status_code=200)
+    else:
+        return JSONResponse(content={"messages": messages, "entity": result}, status_code=200)
+
 
 # User registration model
 class RegisterModel(BaseModel):
