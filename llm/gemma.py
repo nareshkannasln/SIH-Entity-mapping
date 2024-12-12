@@ -107,6 +107,7 @@ async def extract_entity(json_input, raw_text):
     # Stream the result and yield each chunk to the caller
     for chunk in result:
         ans += chunk
+        # yield chunk
         logger.info(ans)
     
     return ans

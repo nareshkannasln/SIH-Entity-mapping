@@ -5,6 +5,8 @@ from gemma import extract_entity
 import uvicorn
 import torch
 import logging
+from fastapi.responses import StreamingResponse
+from typing import AsyncGenerator
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -35,9 +37,7 @@ async def process_data(request: Request):
             raise ValueError("Invalid schema format")
         
         logger.info(f"Request received {request_id}")
-        # Process the data (example function call)
         result = await extract_entity(schema, raw_text)
-
         return JSONResponse(content={'result': result})
 
     except ValueError as e:

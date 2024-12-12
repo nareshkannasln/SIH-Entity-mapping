@@ -13,6 +13,8 @@ import jwt
 import datetime
 from typing import Optional
 from datetime import date
+from fastapi.responses import StreamingResponse
+
 
 
 def clear_torch_cache():
@@ -34,6 +36,20 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"]
 )
+
+from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi import Request
+
+# class LogRequestBodyMiddleware(BaseHTTPMiddleware):
+#     async def dispatch(self, request: Request, call_next):
+#         if request.method == "POST":
+#             body = await request.body()
+#             logger.info(f"Request body: {body.decode('utf-8')}")
+#         response = await call_next(request)
+#         return response
+
+# # Add the middleware to the FastAPI application
+# app.add_middleware(LogRequestBodyMiddleware)
 
 prompt_schema = {
     "aadhaar": {
@@ -103,24 +119,55 @@ prompt_schema = {
 # Configure logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-    
-@app.post("/api/application/{application_id}/upload")
-async def validate(
-    file: UploadFile = File(...),
-    schema: str = Form(...)
-):
-    
-    if schema is None or schema not in prompt_schema:
-        yield JSONResponse(content={"error": "Schema is required"}, status_code=400)
-    
-    schema = prompt_schema[schema]
-    index = 1
-    async for entity_values in process_pdf_file(file, schema):
-        yield JSONResponse(content=entity_values, status_code=200)
-
 
 # Security scheme for HTTPBearer
 security = HTTPBearer()
+
+async def get_user_details(credentials, application_id):
+    user_id = verify_jwt_token(credentials)
+    # Fetch the application data for the given user_id and application_id
+    application = applications_collection.find_one(
+        {"user_id": user_id, "application_id": application_id},
+        {'biodata.profilePicture': 0}
+    )
+    
+    biodata = application.get("biodata", {})
+    education = application.get("education", {'degree': [], 'gateDetails': {}})
+    return {"biodata": biodata, "education": education}
+    
+@app.post("/api/application/{application_id}/upload")
+async def validate(
+    application_id: str,
+    file: UploadFile = File(...),
+    schema: str = Form(...),
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    
+    document_type = schema
+    userDetails = await get_user_details(credentials, application_id)
+    print(userDetails)
+    
+    if schema is None or schema not in prompt_schema:
+        return JSONResponse(content={"error": "Schema is required"}, status_code=400)
+    
+    schema = prompt_schema[schema]
+    result = await process_pdf_file(file, schema)
+    try:
+        result = eval(result)
+    except Exception as e:
+        logger.error(f"Error evaluating result: {e}")
+        return JSONResponse(content={"error": "Error processing the file"}, status_code=500)
+    
+    if result[0] != document_type:
+        return JSONResponse(content={"error": "Document type mismatch"}, status_code=400)
+    
+    index = 1
+    for key in schema:
+        if schema[key] != result[index]:
+            return JSONResponse(content={"error": f"Field {key} mismatch"}, status_code=400)
+        index += 1
+
+    return JSONResponse(content={"message": "Document is valid"}, status_code=200)
 
 # User registration model
 class RegisterModel(BaseModel):
@@ -327,6 +374,26 @@ async def save_education_data(application_id: str, education: dict, credentials:
         raise HTTPException(status_code=404, detail="Application not found")
 
     return {"message": "Application education data saved successfully"}
+
+
+@app.get("/api/application/{application_id}/details")
+async def get_application_details(application_id: str, credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """
+    Endpoint to retrieve both biodata and education details for a specific application.
+    The route is protected and requires JWT token for authentication.
+    """
+    user_id = verify_jwt_token(credentials)
+    # Fetch the application data for the given user_id and application_id
+    application = applications_collection.find_one(
+        {"user_id": user_id, "application_id": application_id}
+    )
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    # Retrieve biodata and education details
+    biodata = application.get("biodata", {})
+    education = application.get("education", {'degree': [], 'gateDetails': {}})
+    return {"biodata": biodata, "education": education}
 
 # Main entry point for running the app
 if __name__ == "__main__":

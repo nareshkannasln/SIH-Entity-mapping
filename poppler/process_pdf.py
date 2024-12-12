@@ -112,7 +112,7 @@ async def process_pdf_file(file: UploadFile = File(...), schema: str = None):
                     logger.error(f"HTTP request error: {e}")
                     raise HTTPException(status_code=500, detail="Unable to connect to data processing API")
 
-                yield response.json()
+                return response.json()
 
         elif file.content_type.startswith("image/"):
             image_path = await save_image_file(file)
@@ -131,7 +131,7 @@ async def process_pdf_file(file: UploadFile = File(...), schema: str = None):
                     logger.error(f"HTTP request error: {e}")
                     raise HTTPException(status_code=500, detail="Unable to connect to data processing API")
                 
-                yield response.json()
+                return response.json()
 
         else:
             logger.error("Invalid file format")
