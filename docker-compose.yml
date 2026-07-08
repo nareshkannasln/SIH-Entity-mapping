@@ -15,7 +15,12 @@ services:
       MONGO_DB: docverify
       # Set these in a .env file next to this compose file (see .env.example).
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY in .env}
+      # LLM provider: "openai" (OpenAI-compatible / self-hosted Ollama) or "anthropic".
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://135.13.20.57:11434/v1}
+      LLM_MODEL: ${LLM_MODEL:-qwen2.5vl:32b}
+      LLM_API_KEY: ${LLM_API_KEY:-ollama}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-4-8}
       CORS_ORIGINS: http://localhost:8080
     ports:

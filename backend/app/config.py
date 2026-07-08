@@ -28,10 +28,27 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expiry_minutes: int = 60
 
-    # --- Anthropic / extraction ---
+    # --- LLM / extraction ---
+    # Provider for document extraction: "openai" (any OpenAI-compatible endpoint,
+    # e.g. a self-hosted Ollama server) or "anthropic" (Claude).
+    llm_provider: str = "openai"
+
+    # OpenAI-compatible settings (used when llm_provider == "openai").
+    # Defaults point at the self-hosted Ollama server. The model MUST be
+    # vision-capable (e.g. qwen2.5vl) — a text-only model like qwen3-coder cannot
+    # read document images.
+    llm_base_url: str = "http://135.13.20.57:11434/v1"
+    llm_model: str = "qwen2.5vl:32b"
+    llm_api_key: str = "ollama"  # Ollama ignores it; any non-empty value works.
+
+    # Anthropic settings (used when llm_provider == "anthropic").
     # ANTHROPIC_API_KEY is read by the SDK directly from the environment.
     anthropic_model: str = "claude-opus-4-8"
+
     extraction_max_tokens: int = 16000
+
+    # Render scale for rasterizing PDF pages to images (higher = sharper, slower).
+    pdf_render_scale: float = 2.0
 
     # --- CORS ---
     # Comma-separated list of allowed origins for the SPA.

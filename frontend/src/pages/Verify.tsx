@@ -118,7 +118,7 @@ export default function Verify() {
       {/* Result panel */}
       <div className="rounded-lg border border-slate-200 bg-white p-6">
         <h2 className="mb-4 text-lg font-semibold">Result</h2>
-        {busy && <p className="text-sm text-slate-500">Claude is reading the document — this takes a few seconds…</p>}
+        {busy && <p className="text-sm text-slate-500">Reading the document — this takes a few seconds…</p>}
         {!busy && !result && <p className="text-sm text-slate-400">Results will appear here.</p>}
 
         {result && (

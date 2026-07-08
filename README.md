@@ -6,23 +6,29 @@ checking them against reference values you supply. Document types and their fiel
 are fully configurable, so it works for any document, not just one domain.
 
 Originally an SIH 2024 recruitment-verification prototype (Surya OCR + local Ollama
-+ poppler across GPU servers), rebuilt as a clean product around a **single Claude
-vision call**.
++ poppler across GPU servers), rebuilt as a clean product around a **single vision-LLM
+call** with a pluggable backend.
 
 ## How it works
 
 ```
-Upload (PDF/image)  ──►  Claude vision + structured outputs  ──►  {structured JSON}
-                                                                       │
-                                              compare vs reference ────┘
-                                                                       ▼
-                                             per-field match / mismatch report
+Upload (PDF/image) ─► pypdfium2 (PDF→page images) ─► vision LLM + JSON schema ─► {JSON}
+                                                                                    │
+                                                        compare vs reference ───────┘
+                                                                                    ▼
+                                                   per-field match / mismatch report
 ```
 
-- **One Claude call** does OCR *and* extraction — no OCR service, no Ollama, no
-  poppler, no GPU. Claude reads PDFs and images natively.
-- **Structured outputs** (`output_config.format`) guarantee validated JSON built at
-  runtime from each document type's field schema — no `eval`, no positional arrays.
+- **One vision-LLM call** does OCR *and* extraction — no separate OCR service, no GPU.
+  Provider is pluggable (`LLM_PROVIDER`):
+  - `openai` — any OpenAI-compatible endpoint (default: a **self-hosted Ollama**
+    server running a **vision** model such as `qwen2.5vl`).
+  - `anthropic` — Claude.
+- **Images** are sent as-is; **PDFs** are rasterized to page images with `pypdfium2`
+  (a pip wheel — no system poppler). The extraction model **must be vision-capable**
+  (a text-only model like `qwen3-coder` cannot read document images).
+- **Structured outputs** (JSON-schema `response_format`) guarantee validated JSON built
+  at runtime from each document type's field schema — no `eval`, no positional arrays.
 - **Verification** compares extracted fields against reference values and flags
   document-type mismatches.
 
@@ -85,12 +91,19 @@ All via environment (see `backend/.env.example`):
 |-----|---------|---------|
 | `MONGO_URI` / `MONGO_DB` | database | `mongodb://localhost:27017` / `docverify` |
 | `JWT_SECRET` | token signing — **must** override in prod | `change-me-in-production` |
-| `ANTHROPIC_API_KEY` | Claude access (read by the SDK) | — |
-| `ANTHROPIC_MODEL` | extraction model | `claude-opus-4-8` |
+| `LLM_PROVIDER` | `openai` (OpenAI-compatible / Ollama) or `anthropic` | `openai` |
+| `LLM_BASE_URL` | OpenAI-compatible endpoint | `http://135.13.20.57:11434/v1` |
+| `LLM_MODEL` | extraction model — **must be vision-capable** | `qwen2.5vl:32b` |
+| `LLM_API_KEY` | key for the endpoint (Ollama ignores it) | `ollama` |
+| `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL` | used when `LLM_PROVIDER=anthropic` | — / `claude-opus-4-8` |
 | `CORS_ORIGINS` | allowed SPA origins (comma-sep) | `http://localhost:5173` |
 
-Swap `ANTHROPIC_MODEL` to `claude-sonnet-5` or `claude-haiku-4-5` to trade quality
-for cost on high volume.
+**Self-hosted (default):** point `LLM_BASE_URL` at your Ollama server and pull a
+vision model: `ollama pull qwen2.5vl:32b`. A text-only model (e.g. `qwen3-coder`)
+will not work — it can't read the document images.
+
+**Claude:** set `LLM_PROVIDER=anthropic` and `ANTHROPIC_API_KEY`; optionally swap
+`ANTHROPIC_MODEL` to `claude-sonnet-5` / `claude-haiku-4-5` for cost.
 
 ## API
 
