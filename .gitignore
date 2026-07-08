@@ -1,2 +1,20 @@
+# Python
 __pycache__/
+*.py[cod]
 venv/
+.venv/
+*.egg-info/
+
+# Env / secrets — never commit
+.env
+*.env
+!.env.example
+
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Misc
+.DS_Store
+*.log

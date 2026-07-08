@@ -1,8 +1,0 @@
-fastapi
-Pillow
-torch
-surya-ocr
-fastapi
-uvicorn
-python-multipart
-torchvision

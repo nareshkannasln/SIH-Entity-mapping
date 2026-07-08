@@ -1,5 +1,0 @@
-langchain
-langchain-ollama
-fastapi
-uvicorn
-torch
