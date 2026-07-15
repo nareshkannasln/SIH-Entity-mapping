@@ -42,8 +42,9 @@ async def verify_document(
     if not file_bytes:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Empty file")
 
-    extracted = await extract(file_bytes, file.content_type or "", doc_type_model)
-    result = verify(doc_type_model, extracted, file.filename or "document", reference_data)
+    extraction = await extract(file_bytes, file.content_type or "", doc_type_model)
+    result = verify(doc_type_model, extraction.data, file.filename or "document", reference_data)
+    result.engine = extraction.engine
 
     record = result.model_dump()
     record.update({"created_by": username, "created_at": datetime.now(timezone.utc)})

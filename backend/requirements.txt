@@ -11,3 +11,7 @@ anthropic>=0.69
 pypdfium2>=4.30
 pillow>=10.3
 email-validator>=2.1
+# Offline OCR + NER engine (llm_provider="offline"). Tesseract must also be
+# installed as a system package; spaCy needs its en_core_web_sm model.
+pytesseract>=0.3.10
+spacy>=3.7

@@ -28,10 +28,20 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expiry_minutes: int = 60
 
+    # --- Bootstrap admin (seeded on first startup if missing) ---
+    admin_username: str = "admin@docverify"
+    admin_email: str = "admin@docverify.com"
+    admin_password: str = "admin@123"
+
     # --- LLM / extraction ---
-    # Provider for document extraction: "openai" (any OpenAI-compatible endpoint,
-    # e.g. a self-hosted Ollama server) or "anthropic" (Claude).
-    llm_provider: str = "openai"
+    # Provider for document extraction:
+    #   "openai"     — any OpenAI-compatible endpoint (e.g. a self-hosted Ollama server)
+    #   "anthropic"  — Claude
+    #   "gemini"     — Google Gemini (generous free tier, OpenAI-compatible endpoint)
+    #   "groq"       — Groq (free tier, very fast, OpenAI-compatible endpoint)
+    #   "openrouter" — OpenRouter free models (OpenAI-compatible endpoint)
+    #   "offline"    — the built-in Tesseract OCR + NER engine (no API, no GPU)
+    llm_provider: str = "offline"
 
     # OpenAI-compatible settings (used when llm_provider == "openai").
     # Defaults point at the self-hosted Ollama server. The model MUST be
@@ -45,7 +55,34 @@ class Settings(BaseSettings):
     # ANTHROPIC_API_KEY is read by the SDK directly from the environment.
     anthropic_model: str = "claude-opus-4-8"
 
+    # Gemini settings (used when llm_provider == "gemini"). Gemini exposes an
+    # OpenAI-compatible endpoint, so extraction reuses the OpenAI code path.
+    # The model MUST be vision-capable (gemini-2.5-flash, gemini-2.5-pro, ...).
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
+    gemini_model: str = "gemini-2.5-flash"
+    gemini_api_key: str = ""
+
+    # Groq settings (used when llm_provider == "groq"). Free tier, OpenAI-compatible,
+    # extremely fast. The model MUST be vision-capable (e.g. a Llama Vision model).
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+    groq_model: str = "meta-llama/llama-4-scout-17b-16e-instruct"
+    groq_api_key: str = ""
+
+    # OpenRouter settings (used when llm_provider == "openrouter"). Routes to many
+    # community-hosted models, several at $0/M tokens. The model MUST be
+    # vision-capable; ":free" variants are rate-limited but cost nothing.
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_model: str = "meta-llama/llama-3.2-11b-vision-instruct:free"
+    openrouter_api_key: str = ""
+
     extraction_max_tokens: int = 16000
+
+    # --- Offline OCR + NER engine (used when llm_provider == "offline") ---
+    # Tesseract language(s) for OCR, e.g. "eng" or "eng+hin".
+    ocr_languages: str = "eng"
+    # spaCy model for named-entity recognition. If it isn't installed the engine
+    # degrades gracefully to its regex + label-matching rules.
+    spacy_model: str = "en_core_web_sm"
 
     # Render scale for rasterizing PDF pages to images (higher = sharper, slower).
     pdf_render_scale: float = 2.0

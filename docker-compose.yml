@@ -15,13 +15,27 @@ services:
       MONGO_DB: docverify
       # Set these in a .env file next to this compose file (see .env.example).
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
-      # LLM provider: "openai" (OpenAI-compatible / self-hosted Ollama) or "anthropic".
-      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      # LLM provider — these are just defaults; an admin can override the
+      # provider/model/key at runtime from the in-app Settings page (stored in
+      # MongoDB). "offline" works out of the box with no API key.
+      #   offline | gemini | groq | openrouter | openai | anthropic
+      LLM_PROVIDER: ${LLM_PROVIDER:-offline}
+      OCR_LANGUAGES: ${OCR_LANGUAGES:-eng}
       LLM_BASE_URL: ${LLM_BASE_URL:-http://135.13.20.57:11434/v1}
       LLM_MODEL: ${LLM_MODEL:-qwen2.5vl:32b}
       LLM_API_KEY: ${LLM_API_KEY:-ollama}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-4-8}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-meta-llama/llama-4-scout-17b-16e-instruct}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-meta-llama/llama-3.2-11b-vision-instruct:free}
+      # Bootstrap admin (seeded on first startup). CHANGE THESE for production.
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin@docverify}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@docverify.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin@123}
       CORS_ORIGINS: http://localhost:8080
     ports:
       - "8000:8000" # exposes /docs and the API directly for debugging

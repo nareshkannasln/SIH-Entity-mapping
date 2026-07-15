@@ -32,6 +32,34 @@ class TokenResponse(BaseModel):
 class UserPublic(BaseModel):
     username: str
     email: EmailStr
+    role: str = "user"
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+# --- LLM settings (admin-configurable at runtime) ---
+Provider = Literal["openai", "anthropic", "gemini", "groq", "openrouter", "offline"]
+
+
+class LLMSettingsIn(BaseModel):
+    provider: Provider = "offline"
+    # Empty is allowed (e.g. the offline engine, or "keep the provider default").
+    model: str = Field(default="", max_length=128)
+    base_url: str = ""
+    # Optional: only sent when the admin wants to change the key. Empty means
+    # "keep the existing key".
+    api_key: str = ""
+
+
+class LLMSettingsPublic(BaseModel):
+    provider: str
+    model: str
+    base_url: str = ""
+    # Never return the raw key — only whether one is configured.
+    api_key_set: bool = False
 
 
 # --- Doc types (schemas) ---
@@ -71,4 +99,7 @@ class VerificationResult(BaseModel):
     extracted: dict[str, Any] = {}
     field_results: list[FieldResult] = []
     overall_status: str = "extracted"  # "matched" | "mismatched" | "extracted"
+    # Human-readable label of the extraction backend used (e.g. "Offline OCR + NER",
+    # "gemini · gemini-2.5-flash"). Informational only.
+    engine: Optional[str] = None
     created_at: Optional[datetime] = None

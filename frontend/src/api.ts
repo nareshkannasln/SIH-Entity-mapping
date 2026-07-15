@@ -32,7 +32,23 @@ export interface VerificationResult {
   extracted: Record<string, unknown>;
   field_results: FieldResult[];
   overall_status: "matched" | "mismatched" | "extracted";
+  engine?: string | null;
   created_at?: string | null;
+}
+
+export interface UserInfo {
+  username: string;
+  email: string;
+  role: string;
+}
+
+export type Provider = "offline" | "gemini" | "groq" | "openrouter" | "openai" | "anthropic";
+
+export interface LLMSettings {
+  provider: Provider;
+  model: string;
+  base_url: string;
+  api_key_set: boolean;
 }
 
 const TOKEN_KEY = "docverify_token";
@@ -79,7 +95,23 @@ export const api = {
       body: JSON.stringify({ username, password }),
     }),
 
-  me: () => request<{ username: string; email: string }>("/api/auth/me"),
+  me: () => request<UserInfo>("/api/auth/me"),
+
+  changePassword: (current_password: string, new_password: string) =>
+    request<void>("/api/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ current_password, new_password }),
+    }),
+
+  getSettings: () => request<LLMSettings>("/api/settings"),
+
+  updateSettings: (s: {
+    provider: string;
+    model: string;
+    base_url: string;
+    api_key?: string;
+  }) =>
+    request<LLMSettings>("/api/settings", { method: "PUT", body: JSON.stringify(s) }),
 
   listDocTypes: () => request<DocType[]>("/api/doc-types"),
 

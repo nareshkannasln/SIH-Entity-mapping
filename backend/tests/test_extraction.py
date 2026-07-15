@@ -11,7 +11,7 @@ from types import SimpleNamespace
 import pytest
 from PIL import Image
 
-from app import extraction
+from app import extraction, images
 from app.models import DocType, SchemaField
 
 
@@ -37,22 +37,22 @@ def _pdf_bytes(pages: int = 2) -> bytes:
 
 
 def test_image_passthrough():
-    images = extraction._to_images(_png_bytes(), "image/png")
-    assert len(images) == 1
-    assert images[0][1] == "image/png"
+    imgs = images.to_images(_png_bytes(), "image/png")
+    assert len(imgs) == 1
+    assert imgs[0][1] == "image/png"
 
 
 def test_pdf_rasterized_to_page_images():
-    images = extraction._to_images(_pdf_bytes(2), "application/pdf")
-    assert len(images) == 2
-    assert all(mt == "image/png" for _, mt in images)
+    imgs = images.to_images(_pdf_bytes(2), "application/pdf")
+    assert len(imgs) == 2
+    assert all(mt == "image/png" for _, mt in imgs)
 
 
 def test_unsupported_type_rejected():
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc:
-        extraction._to_images(b"x", "text/plain")
+        images.to_images(b"x", "text/plain")
     assert exc.value.status_code == 400
 
 
@@ -74,12 +74,20 @@ def test_extract_openai_parses_structured_output(monkeypatch):
     fake_client = SimpleNamespace(
         chat=SimpleNamespace(completions=SimpleNamespace(create=fake_create))
     )
-    monkeypatch.setattr(extraction, "_get_openai_client", lambda: fake_client)
-    # llm_provider defaults to "openai", so extract() takes the OpenAI path.
+    monkeypatch.setattr(extraction, "_get_openai_client", lambda *a, **k: fake_client)
+
+    # Resolve config without touching MongoDB — force the OpenAI path.
+    from app.llm_config import LLMConfig
+
+    async def fake_cfg() -> LLMConfig:
+        return LLMConfig(provider="openai", model="test-model", base_url="http://x/v1", api_key="k")
+
+    monkeypatch.setattr(extraction, "get_llm_config", fake_cfg)
 
     result = asyncio.run(extraction.extract(_png_bytes(), "image/png", _doc_type()))
-    assert result["name"] == "Asha"
-    assert result["roll_number"] == 42
+    assert result.data["name"] == "Asha"
+    assert result.data["roll_number"] == 42
+    assert result.engine == "openai · test-model"
 
     # The request carried a json_schema response_format and an image content block.
     assert captured["response_format"]["type"] == "json_schema"

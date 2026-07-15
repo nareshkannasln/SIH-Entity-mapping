@@ -35,6 +35,10 @@ def verifications():
     return get_db()["verifications"]
 
 
+def app_settings():
+    return get_db()["app_settings"]
+
+
 async def ensure_indexes() -> None:
     await users().create_index("username", unique=True)
     await doc_types().create_index("key", unique=True)

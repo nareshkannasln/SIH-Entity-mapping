@@ -8,8 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import db
 from .config import get_settings
-from .routers import auth, documents, schemas
-from .seed import seed_doc_types
+from .routers import auth, documents, schemas, settings as settings_router
+from .seed import seed_admin, seed_doc_types
 
 logging.basicConfig(level=logging.INFO)
 
@@ -17,6 +17,7 @@ logging.basicConfig(level=logging.INFO)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await db.ensure_indexes()
+    await seed_admin()
     await seed_doc_types()
     yield
     db.close_client()
@@ -37,6 +38,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(schemas.router)
     app.include_router(documents.router)
+    app.include_router(settings_router.router)
 
     @app.get("/health", tags=["health"])
     async def health():

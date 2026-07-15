@@ -8,6 +8,8 @@ is general-purpose; these are just a useful starting set.
 from datetime import datetime, timezone
 
 from . import db
+from .config import get_settings
+from .security import hash_password
 
 DEFAULT_DOC_TYPES: list[dict] = [
     {
@@ -89,6 +91,21 @@ DEFAULT_DOC_TYPES: list[dict] = [
         ],
     },
 ]
+
+
+async def seed_admin() -> None:
+    """Create the bootstrap admin account on first startup (idempotent)."""
+    settings = get_settings()
+    if await db.users().find_one({"username": settings.admin_username}):
+        return
+    await db.users().insert_one(
+        {
+            "username": settings.admin_username,
+            "email": settings.admin_email,
+            "password_hash": hash_password(settings.admin_password),
+            "role": "admin",
+        }
+    )
 
 
 async def seed_doc_types() -> None:

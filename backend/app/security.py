@@ -13,6 +13,7 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from . import db
 from .config import get_settings
 
 _bearer = HTTPBearer(auto_error=True)
@@ -64,4 +65,12 @@ def get_current_user(
     username = payload.get("sub")
     if not username:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token")
+    return username
+
+
+async def get_current_admin(username: str = Depends(get_current_user)) -> str:
+    """Allow only users whose stored role is 'admin'."""
+    user = await db.users().find_one({"username": username})
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Administrator access required")
     return username

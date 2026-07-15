@@ -1,1 +1,97 @@
 @import "tailwindcss";
+
+/* Class-based dark mode: toggling `.dark` on <html> flips the theme, so users
+   can override the OS preference. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+}
+:root.dark {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+}
+.dark body {
+  @apply bg-slate-950 text-slate-100;
+}
+
+/* Consistent, accessible focus rings across interactive elements. */
+:where(button, a, input, select, textarea):focus-visible {
+  @apply outline-none ring-2 ring-indigo-500/60 ring-offset-2 ring-offset-white;
+}
+.dark :where(button, a, input, select, textarea):focus-visible {
+  @apply ring-offset-slate-950;
+}
+
+/* Skeleton shimmer. */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+.skeleton {
+  @apply relative overflow-hidden bg-slate-200/70 dark:bg-slate-800/70;
+}
+.skeleton::after {
+  content: "";
+  @apply absolute inset-0 -translate-x-full;
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.35),
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+}
+.dark .skeleton::after {
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.06),
+    transparent
+  );
+}
+
+/* Toast entrance. */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-toast-in {
+  animation: toast-in 0.18s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+/* Slim scrollbars. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(148 163 184 / 0.5) transparent;
+}

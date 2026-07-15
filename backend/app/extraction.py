@@ -1,10 +1,13 @@
 """Document extraction using a vision LLM + structured (JSON-schema) outputs.
 
-A single vision call does OCR *and* extraction — no separate OCR service. Two
-backends are supported and selected via ``settings.llm_provider``:
+A single vision call does OCR *and* extraction — no separate OCR service. Three
+backends are supported, selected via the effective provider (see
+``llm_config.get_llm_config`` — an admin's DB settings layered over ``.env``):
 
 - ``openai``    — any OpenAI-compatible endpoint (default: a self-hosted Ollama
                   server running a vision model such as ``qwen2.5vl``).
+- ``gemini``    — Google Gemini via its OpenAI-compatible endpoint (reuses the
+                  ``openai`` code path).
 - ``anthropic`` — Claude via the Anthropic SDK.
 
 Input handling is unified: images are used as-is and PDFs are rasterized to page
@@ -16,17 +19,27 @@ from the doc type's field schema — no ``eval``, no positional arrays.
 import base64
 import json
 import logging
-from io import BytesIO
+from dataclasses import dataclass
 from typing import Any
 
 from fastapi import HTTPException, status
 
 from .config import get_settings
+from .images import to_images
+from .llm_config import get_llm_config
 from .models import DocType
 
 logger = logging.getLogger(__name__)
 
-_SUPPORTED_IMAGE_TYPES = {"image/png", "image/jpeg", "image/webp", "image/gif"}
+
+@dataclass
+class ExtractionResult:
+    """The extracted fields plus a human-readable label of the engine used."""
+
+    data: dict[str, Any]
+    engine: str
+    # Raw OCR text, when the engine produces it (offline engine only).
+    raw_text: str | None = None
 
 _SYSTEM_PROMPT = (
     "You are a meticulous document data-extraction engine. You are given one or "
@@ -48,9 +61,10 @@ _JSON_TYPE = {
     "boolean": "boolean",
 }
 
-# Lazily-constructed clients (so importing this module needs no credentials).
-_openai_client = None
-_anthropic_client = None
+# Clients are cached by connection identity so a runtime settings change (new
+# base URL or key) transparently builds a fresh client on next use.
+_openai_clients: dict[tuple[str, str], Any] = {}
+_anthropic_clients: dict[str, Any] = {}
 
 
 def build_json_schema(doc_type: DocType) -> dict[str, Any]:
@@ -82,42 +96,6 @@ def build_json_schema(doc_type: DocType) -> dict[str, Any]:
     }
 
 
-def _rasterize_pdf(pdf_bytes: bytes) -> list[bytes]:
-    """Render each PDF page to PNG bytes using pypdfium2 (no system poppler)."""
-    import pypdfium2 as pdfium
-
-    scale = get_settings().pdf_render_scale
-    pdf = pdfium.PdfDocument(pdf_bytes)
-    try:
-        pages: list[bytes] = []
-        for page in pdf:
-            bitmap = page.render(scale=scale)
-            image = bitmap.to_pil()
-            buf = BytesIO()
-            image.save(buf, format="PNG")
-            pages.append(buf.getvalue())
-            bitmap.close()
-            page.close()
-        return pages
-    finally:
-        pdf.close()
-
-
-def _to_images(file_bytes: bytes, content_type: str) -> list[tuple[bytes, str]]:
-    """Return a list of (image_bytes, media_type) for the uploaded document."""
-    if content_type == "application/pdf":
-        pages = _rasterize_pdf(file_bytes)
-        if not pages:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "PDF has no pages")
-        return [(p, "image/png") for p in pages]
-    if content_type in _SUPPORTED_IMAGE_TYPES:
-        return [(file_bytes, content_type)]
-    raise HTTPException(
-        status.HTTP_400_BAD_REQUEST,
-        f"Unsupported file type '{content_type}'. Allowed: PDF, PNG, JPEG, WEBP, GIF.",
-    )
-
-
 def _prompt(doc_type: DocType) -> str:
     field_list = ", ".join(f"{f.name} ({f.type})" for f in doc_type.fields)
     return (
@@ -141,19 +119,18 @@ def _parse_json(text: str | None) -> dict[str, Any]:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Malformed extraction result") from exc
 
 
-# --- OpenAI-compatible backend (Ollama, etc.) ---
-def _get_openai_client():
-    global _openai_client
-    if _openai_client is None:
+# --- OpenAI-compatible backend (Ollama, Gemini, etc.) ---
+def _get_openai_client(base_url: str, api_key: str):
+    key = (base_url, api_key)
+    if key not in _openai_clients:
         from openai import AsyncOpenAI
 
-        settings = get_settings()
-        _openai_client = AsyncOpenAI(base_url=settings.llm_base_url, api_key=settings.llm_api_key)
-    return _openai_client
+        _openai_clients[key] = AsyncOpenAI(base_url=base_url, api_key=api_key)
+    return _openai_clients[key]
 
 
 async def _extract_openai(
-    images: list[tuple[bytes, str]], schema: dict[str, Any], prompt: str
+    images: list[tuple[bytes, str]], schema: dict[str, Any], prompt: str, *, client, model: str
 ) -> dict[str, Any]:
     settings = get_settings()
     content: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
@@ -164,8 +141,8 @@ async def _extract_openai(
         )
 
     try:
-        resp = await _get_openai_client().chat.completions.create(
-            model=settings.llm_model,
+        resp = await client.chat.completions.create(
+            model=model,
             max_tokens=settings.extraction_max_tokens,
             temperature=0,
             messages=[
@@ -187,17 +164,17 @@ async def _extract_openai(
 
 
 # --- Anthropic backend (Claude) ---
-def _get_anthropic_client():
-    global _anthropic_client
-    if _anthropic_client is None:
+def _get_anthropic_client(api_key: str):
+    if api_key not in _anthropic_clients:
         from anthropic import AsyncAnthropic
 
-        _anthropic_client = AsyncAnthropic()
-    return _anthropic_client
+        # api_key="" -> let the SDK read ANTHROPIC_API_KEY from the environment.
+        _anthropic_clients[api_key] = AsyncAnthropic(api_key=api_key or None)
+    return _anthropic_clients[api_key]
 
 
 async def _extract_anthropic(
-    images: list[tuple[bytes, str]], schema: dict[str, Any], prompt: str
+    images: list[tuple[bytes, str]], schema: dict[str, Any], prompt: str, *, client, model: str
 ) -> dict[str, Any]:
     settings = get_settings()
     content: list[dict[str, Any]] = []
@@ -209,8 +186,8 @@ async def _extract_anthropic(
     content.append({"type": "text", "text": prompt})
 
     try:
-        async with _get_anthropic_client().messages.stream(
-            model=settings.anthropic_model,
+        async with client.messages.stream(
+            model=model,
             max_tokens=settings.extraction_max_tokens,
             system=_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": content}],
@@ -232,12 +209,39 @@ async def _extract_anthropic(
     return _parse_json(text)
 
 
-async def extract(file_bytes: bytes, content_type: str, doc_type: DocType) -> dict[str, Any]:
-    """Extract structured fields from a document using the configured provider."""
-    images = _to_images(file_bytes, content_type)
+async def extract(file_bytes: bytes, content_type: str, doc_type: DocType) -> ExtractionResult:
+    """Extract structured fields from a document using the configured provider.
+
+    Returns the extracted field dict plus an ``engine`` label describing which
+    backend produced it (surfaced in the UI).
+    """
+    cfg = await get_llm_config()
+
+    # Offline engine: local Tesseract OCR + NER, no API and no page-image payload
+    # to a remote model.
+    if cfg.provider == "offline":
+        from .offline_extraction import offline_extract
+
+        data, text = offline_extract(file_bytes, content_type, doc_type)
+        return ExtractionResult(data=data, engine="Offline OCR + NER", raw_text=text)
+
+    images = to_images(file_bytes, content_type)
     schema = build_json_schema(doc_type)
     prompt = _prompt(doc_type)
 
-    if get_settings().llm_provider == "anthropic":
-        return await _extract_anthropic(images, schema, prompt)
-    return await _extract_openai(images, schema, prompt)
+    if cfg.provider == "anthropic":
+        data = await _extract_anthropic(
+            images, schema, prompt, client=_get_anthropic_client(cfg.api_key), model=cfg.model
+        )
+        return ExtractionResult(data=data, engine=f"Anthropic · {cfg.model}")
+
+    # "openai", "gemini", "groq" and "openrouter" all use the OpenAI-compatible path.
+    if not cfg.api_key:
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            f"No API key is configured for LLM provider '{cfg.provider}'. "
+            "Set one on the Settings page, or switch to the offline engine.",
+        )
+    client = _get_openai_client(cfg.base_url, cfg.api_key)
+    data = await _extract_openai(images, schema, prompt, client=client, model=cfg.model)
+    return ExtractionResult(data=data, engine=f"{cfg.provider} · {cfg.model}")
