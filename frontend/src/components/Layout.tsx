@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../auth";
 import { useTheme } from "../lib/theme";
@@ -44,6 +44,32 @@ function ThemeToggle() {
 export default function Layout({ children }: { children: ReactNode }) {
   const { username, isAdmin, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close the menu on an outside press or Escape.
+  //
+  // This deliberately does NOT use onBlur + setTimeout on the trigger: blur
+  // fires on mousedown, so a click held longer than the timeout unmounted the
+  // menu before mouseup, no click event was ever produced, and "Log out" did
+  // nothing. Anchoring to presses *outside* menuRef removes the race — a press
+  // on an item can never close the menu before its click lands.
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [menuOpen]);
 
   return (
     <div className="min-h-screen">
@@ -75,10 +101,11 @@ export default function Layout({ children }: { children: ReactNode }) {
 
           <div className="ml-auto flex items-center gap-1">
             <ThemeToggle />
-            <div className="relative">
+            <div className="relative" ref={menuRef}>
               <button
                 onClick={() => setMenuOpen((o) => !o)}
-                onBlur={() => setTimeout(() => setMenuOpen(false), 150)}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
                 className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-slate-200 text-xs font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-200">
@@ -92,12 +119,16 @@ export default function Layout({ children }: { children: ReactNode }) {
                 <div className="animate-fade-in absolute right-0 mt-1 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-800 dark:bg-slate-900">
                   <NavLink
                     to="/profile"
+                    onClick={() => setMenuOpen(false)}
                     className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
                   >
                     Profile & security
                   </NavLink>
                   <button
-                    onClick={logout}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      logout();
+                    }}
                     className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
                   >
                     <IconLogout width={16} height={16} />

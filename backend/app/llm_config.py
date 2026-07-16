@@ -28,6 +28,7 @@ def _default_model(settings: Settings, provider: str) -> str:
         "gemini": settings.gemini_model,
         "groq": settings.groq_model,
         "openrouter": settings.openrouter_model,
+        "nvidia": settings.nvidia_model,
         "anthropic": settings.anthropic_model,
         "offline": "tesseract+ner",
     }.get(provider, settings.llm_model)
@@ -39,6 +40,7 @@ def _default_base_url(settings: Settings, provider: str) -> str:
         "gemini": settings.gemini_base_url,
         "groq": settings.groq_base_url,
         "openrouter": settings.openrouter_base_url,
+        "nvidia": settings.nvidia_base_url,
         "anthropic": "",
         "offline": "",
     }.get(provider, settings.llm_base_url)
@@ -50,6 +52,7 @@ def _default_api_key(settings: Settings, provider: str) -> str:
         "gemini": settings.gemini_api_key,
         "groq": settings.groq_api_key,
         "openrouter": settings.openrouter_api_key,
+        "nvidia": settings.nvidia_api_key,
         # The Anthropic SDK normally reads this from the environment.
         "anthropic": os.environ.get("ANTHROPIC_API_KEY", ""),
         # The offline engine needs no key.

@@ -75,14 +75,35 @@ class Settings(BaseSettings):
     openrouter_model: str = "meta-llama/llama-3.2-11b-vision-instruct:free"
     openrouter_api_key: str = ""
 
+    # NVIDIA settings (used when llm_provider == "nvidia"). build.nvidia.com hosts
+    # many models on a free evaluation tier behind an OpenAI-compatible endpoint,
+    # so extraction reuses the OpenAI code path. The model MUST be vision-capable
+    # — DiffusionGemma is multimodal and handles OCR / document understanding.
+    nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
+    nvidia_model: str = "google/diffusiongemma-26b-a4b-it"
+    nvidia_api_key: str = ""
+
     extraction_max_tokens: int = 16000
 
     # --- Offline OCR + NER engine (used when llm_provider == "offline") ---
+    # OCR engine backing the offline provider:
+    #   "tesseract" — system binary; tiny footprint, weakest on noisy scans.
+    #   "surya"     — Surya OCR 2 (GGUF) served by llama.cpp; CPU-only, far more
+    #                 accurate, but pulls ~2GB of weights on first use.
+    ocr_engine: str = "tesseract"
     # Tesseract language(s) for OCR, e.g. "eng" or "eng+hin".
     ocr_languages: str = "eng"
     # spaCy model for named-entity recognition. If it isn't installed the engine
     # degrades gracefully to its regex + label-matching rules.
     spacy_model: str = "en_core_web_sm"
+
+    # --- Surya (ocr_engine == "surya") ---
+    # Surya reads these from the process environment, so the OCR entry point
+    # exports them before importing surya. "cpu" keeps inference GPU-free;
+    # llama.cpp picks the best CPU kernel for the host at runtime.
+    torch_device: str = "cpu"
+    # Absolute path to the llama-server binary. Empty = resolve it from PATH.
+    llama_cpp_binary: str = ""
 
     # Render scale for rasterizing PDF pages to images (higher = sharper, slower).
     pdf_render_scale: float = 2.0

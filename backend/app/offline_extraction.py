@@ -4,8 +4,8 @@ This is the ``offline`` provider. It runs entirely on the local CPU and needs no
 API key, which makes it the reliable zero-config default and a fallback when no
 cloud model is configured. The pipeline is three classical-ML / NLP stages:
 
-    page images ──► Tesseract OCR ──► raw text
-                                        │
+    page images ──► OCR (ocr_engine) ──► raw text
+                    tesseract | surya       │
                     ┌───────────────────┴───────────────────┐
                     ▼                                        ▼
           rule engine (regex + label/                spaCy NER model
@@ -13,6 +13,10 @@ cloud model is configured. The pipeline is three classical-ML / NLP stages:
                     └───────────────────┬───────────────────┘
                                         ▼
                         {field: value}  +  document_type
+
+Either OCR engine feeds the same text into the same rules: ``tesseract`` is the
+small default, while ``surya`` runs Surya OCR 2 (GGUF) through llama.cpp for
+much better accuracy on scans — still CPU-only, no GPU and no API key.
 
 The heavy lifting — ``extract_fields_from_text`` — is a pure function of the OCR
 text and the target schema, so it is unit-tested without Tesseract or a GPU. The
@@ -23,9 +27,11 @@ its regex + label-matching rules.
 from __future__ import annotations
 
 import logging
+import os
 import re
 from difflib import SequenceMatcher
 from functools import lru_cache
+from io import BytesIO
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -359,13 +365,85 @@ def _ocr_images(images: list[tuple[bytes, str]]) -> str:
     return "\n".join(pages)
 
 
-def offline_extract(file_bytes: bytes, content_type: str, doc_type: DocType) -> dict[str, Any]:
-    """OCR the document locally, then map the text to the schema fields."""
+def _html_to_text(html: str) -> str:
+    """Flatten a Surya block's HTML into the plain lines the rules expect.
+
+    Surya returns markup (``<p>``, ``<br>``, tables); everything downstream is
+    line-oriented, so tags become newlines rather than being dropped — losing
+    them would run ``Name: X`` into the next field's label.
+    """
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(html, "html.parser")
+    for br in soup.find_all("br"):
+        br.replace_with("\n")
+    lines = (ln.strip() for ln in soup.get_text(separator="\n").splitlines())
+    return "\n".join(ln for ln in lines if ln)
+
+
+@lru_cache(maxsize=1)
+def _surya_predictor():
+    """Build the Surya predictor once — it spawns a llama-server subprocess."""
+    settings = get_settings()
+    # Must precede the surya import: surya.settings snapshots the environment at
+    # import time, and this is what keeps inference off the GPU.
+    os.environ.setdefault("TORCH_DEVICE", settings.torch_device)
+    if settings.llama_cpp_binary:
+        os.environ.setdefault("LLAMA_CPP_BINARY", settings.llama_cpp_binary)
+
+    from surya.inference import get_default_manager
+    from surya.recognition import RecognitionPredictor
+
+    return RecognitionPredictor(get_default_manager())
+
+
+def _ocr_images_surya(images: list[tuple[bytes, str]]) -> str:
+    """Run Surya OCR over each page image and concatenate the text."""
+    try:
+        predictor = _surya_predictor()
+    except ImportError as exc:
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "Surya OCR is unavailable (surya-ocr not installed).",
+        ) from exc
+    except Exception as exc:
+        # Most often the llama-server binary is missing; surya's own message
+        # names the cause, so pass it through instead of a generic string.
+        logger.exception("Surya predictor failed to start")
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            f"Surya OCR failed to start: {exc}",
+        ) from exc
+
+    from PIL import Image
+
+    pil_pages = [Image.open(BytesIO(b)).convert("RGB") for b, _ in images]
+    pages: list[str] = []
+    for page in predictor(pil_pages):
+        blocks = sorted(page.blocks, key=lambda b: b.reading_order)
+        parts = [
+            _html_to_text(b.html)
+            for b in blocks
+            if b.html and not b.skipped and not b.error
+        ]
+        pages.append("\n".join(p for p in parts if p))
+    return "\n".join(pages)
+
+
+def offline_extract(
+    file_bytes: bytes, content_type: str, doc_type: DocType
+) -> tuple[dict[str, Any], str]:
+    """OCR the document locally, then map the text to the schema fields.
+
+    Returns ``(fields, ocr_text)`` — the caller keeps the raw text as
+    ``ExtractionResult.raw_text``.
+    """
     images = to_images(file_bytes, content_type)
-    text = _ocr_images(images)
+    engine = get_settings().ocr_engine.lower()
+    text = _ocr_images_surya(images) if engine == "surya" else _ocr_images(images)
     if not text.strip():
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             "No readable text was found in the document.",
         )
-    return extract_fields_from_text(text, doc_type)
+    return extract_fields_from_text(text, doc_type), text

@@ -38,6 +38,22 @@ body {
     transform: translateX(100%);
   }
 }
+
+/* Indeterminate progress bar: extraction can run ~30s/page on local CPU OCR and
+   the server emits no progress events, so the bar shows liveness, not a share
+   of work done. Travels -100%..400% of its own width to cross the full track. */
+@keyframes progress-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+.progress-indeterminate {
+  @apply h-full w-1/4 rounded-full bg-indigo-500;
+  animation: progress-slide 1.4s ease-in-out infinite;
+}
 .skeleton {
   @apply relative overflow-hidden bg-slate-200/70 dark:bg-slate-800/70;
 }

@@ -42,7 +42,14 @@ export interface UserInfo {
   role: string;
 }
 
-export type Provider = "offline" | "gemini" | "groq" | "openrouter" | "openai" | "anthropic";
+export type Provider =
+  | "offline"
+  | "nvidia"
+  | "gemini"
+  | "groq"
+  | "openrouter"
+  | "openai"
+  | "anthropic";
 
 export interface LLMSettings {
   provider: Provider;

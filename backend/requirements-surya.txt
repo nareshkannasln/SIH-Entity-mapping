@@ -1,0 +1,38 @@
+# Optional CPU-only Surya OCR stack — enable with OCR_ENGINE=surya.
+#
+#   pip install -r requirements-surya.txt
+#
+# Why the +cpu pins matter: surya-ocr depends on torch/torchvision, and plain
+# `pip install surya-ocr` resolves those from PyPI, whose Linux wheels bundle
+# ~2GB of CUDA libraries this project never uses. The +cpu local versions exist
+# only on the PyTorch CPU index, so pinning them forces the GPU-free build.
+#
+# torch and torchvision must be the SAME build variant. Mixing a +cpu torch with
+# a PyPI torchvision fails at import with "operator torchvision::nms does not
+# exist" — the ABIs don't match.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.13.0+cpu
+torchvision==0.28.0+cpu
+
+surya-ocr>=0.21,<0.22
+# surya imports requests (surya/common/s3.py) but does not declare it.
+requests>=2.32
+
+# ALSO REQUIRED — not a pip package:
+# Surya 0.21 runs no model in-process; it drives an external llama.cpp server.
+# Grab the plain CPU build (not cuda/rocm/vulkan/sycl) and point the app at it:
+#
+#   curl -sL -o llama.tar.gz https://github.com/ggml-org/llama.cpp/releases/download/b10048/llama-b10048-bin-ubuntu-x64.tar.gz
+#   tar xzf llama.tar.gz -C vendor/
+#   # then set in .env:
+#   LLAMA_CPP_BINARY=/abs/path/to/vendor/llama-b10048/llama-server
+#
+# That build ships per-microarchitecture kernels (haswell, icelake, alderlake,
+# piledriver, ...) and selects the best one for the host CPU at runtime, so one
+# artifact stays optimal across Intel and AMD without a rebuild.
+#
+# On first OCR it downloads ~2GB of GGUF weights (datalab-to/surya-ocr-2-gguf)
+# into ~/.cache/huggingface.
+#
+# Licensing: surya-ocr is GPL-3.0 with a revenue-based commercial exception.
+# Fine for this prototype; review before shipping commercially.

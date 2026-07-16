@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, type DocType, type VerificationResult } from "../api";
+import { api, type DocType } from "../api";
 import { parseReferenceFile } from "../lib/importFields";
+import { useVerificationRun } from "../lib/verificationRun";
 import { useToast } from "../components/Toast";
 import { Badge, Button, Card, EmptyState, Field, Input, Select } from "../components/ui";
 import { IconCheck, IconFile, IconScan, IconUpload, IconX } from "../components/icons";
@@ -20,6 +21,93 @@ function formatBytes(n: number) {
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
+// Stages of the real backend pipeline (upload -> rasterize -> OCR -> map -> compare).
+// The server sends no progress events, so these advance on elapsed time: they show
+// what the request is doing, never a percentage we cannot actually know. Local CPU
+// OCR runs ~30s/page, so the later copy reassures rather than implying a stall.
+const STAGES: { at: number; label: string; hint: string }[] = [
+  { at: 0, label: "Uploading document", hint: "Sending the file to the server" },
+  { at: 2, label: "Rendering pages", hint: "Converting the document to page images" },
+  { at: 5, label: "Reading the document", hint: "Recognising text on each page" },
+  { at: 20, label: "Still reading", hint: "Local CPU OCR takes roughly 30s per page" },
+  { at: 45, label: "Extracting fields", hint: "Mapping the text onto this document type" },
+  { at: 60, label: "Almost there", hint: "Comparing values against your reference" },
+];
+
+function elapsedLabel(s: number) {
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+function ProcessingStatus({ startedAt, recovering }: { startedAt: number; recovering: boolean }) {
+  // Derived from the run's real start time, not from mount, so the timer stays
+  // truthful after navigating away and back — or after a reload.
+  const [elapsed, setElapsed] = useState(() => Math.max(0, Math.round((Date.now() - startedAt) / 1000)));
+
+  useEffect(() => {
+    const tick = () => setElapsed(Math.max(0, Math.round((Date.now() - startedAt) / 1000)));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [startedAt]);
+
+  const stage = useMemo(
+    () =>
+      recovering
+        ? {
+            label: "Picking up where you left off",
+            hint: "This document was already being processed — waiting for the result",
+          }
+        : [...STAGES].reverse().find((s) => elapsed >= s.at) ?? STAGES[0],
+    [elapsed, recovering],
+  );
+
+  return (
+    <div
+      className="mb-5 rounded-lg border border-slate-200/60 bg-slate-50/60 p-4
+                 dark:border-slate-700/60 dark:bg-slate-800/40"
+      aria-live="polite"
+    >
+      <div className="flex items-center gap-3">
+        <span className="relative flex h-2.5 w-2.5 shrink-0">
+          <span
+            className="absolute inline-flex h-full w-full animate-ping rounded-full
+                       bg-indigo-400 opacity-75"
+          />
+          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-indigo-500" />
+        </span>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="truncate text-sm font-medium">
+              {stage.label}
+              <span className="ml-0.5 inline-flex">
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    className="animate-bounce"
+                    style={{ animationDelay: `${i * 150}ms` }}
+                  >
+                    .
+                  </span>
+                ))}
+              </span>
+            </p>
+            <span className="shrink-0 font-mono text-xs tabular-nums text-slate-500">
+              {elapsedLabel(elapsed)}
+            </span>
+          </div>
+          <p className="mt-0.5 truncate text-xs text-slate-500">{stage.hint}</p>
+        </div>
+      </div>
+
+      {/* Indeterminate bar — the server reports no percentage, so we never fake one. */}
+      <div className="mt-3 h-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+        <div className="progress-indeterminate" />
+      </div>
+    </div>
+  );
+}
+
 export default function Verify() {
   const toast = useToast();
   const [docTypes, setDocTypes] = useState<DocType[]>([]);
@@ -28,8 +116,8 @@ export default function Verify() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [reference, setReference] = useState<Record<string, string>>({});
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<VerificationResult | null>(null);
+  // Lives above the router, so it survives navigating away and page reloads.
+  const { busy, result, pending, recovering, run, clear } = useVerificationRun();
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -48,7 +136,7 @@ export default function Verify() {
   );
 
   const chooseFile = (f: File | null) => {
-    setResult(null);
+    clear();
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setFile(f);
     setPreviewUrl(f && f.type.startsWith("image/") ? URL.createObjectURL(f) : null);
@@ -82,21 +170,16 @@ export default function Verify() {
 
   const submit = async () => {
     if (!file || !selected) return;
-    setBusy(true);
-    setResult(null);
     try {
       const ref = Object.fromEntries(
         Object.entries(reference).filter(([, v]) => v.trim() !== "")
       );
-      const res = await api.verify(selected.key, file, ref);
-      setResult(res);
+      const res = await run(selected.key, file, ref);
       if (res.overall_status === "matched") toast.success("All referenced fields matched.");
       else if (res.overall_status === "mismatched") toast.error("Some fields did not match.");
       else toast.success("Document extracted.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Verification failed");
-    } finally {
-      setBusy(false);
     }
   };
 
@@ -257,12 +340,18 @@ export default function Verify() {
           <h2 className="mb-4 text-base font-semibold">Result</h2>
 
           {busy && (
-            <div className="space-y-3">
-              <div className="skeleton h-6 w-40 rounded-md" />
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="skeleton h-9 w-full rounded-md" />
-              ))}
-            </div>
+            <>
+              <ProcessingStatus
+                startedAt={pending?.startedAt ?? Date.now()}
+                recovering={recovering}
+              />
+              <div className="space-y-3">
+                <div className="skeleton h-6 w-40 rounded-md" />
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="skeleton h-9 w-full rounded-md" />
+                ))}
+              </div>
+            </>
           )}
 
           {!busy && !result && (

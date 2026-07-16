@@ -25,6 +25,16 @@ const PRESETS: Record<Provider, Preset> = {
     defaultBaseUrl: "",
     hint: "Built-in Tesseract OCR + spaCy NER engine. Runs on the server with no API key and no GPU. Best for privacy and zero cost; accuracy is lower than the vision models.",
   },
+  nvidia: {
+    label: "NVIDIA (DiffusionGemma)",
+    free: true,
+    needsKey: true,
+    needsBaseUrl: true,
+    defaultModel: "google/diffusiongemma-26b-a4b-it",
+    defaultBaseUrl: "https://integrate.api.nvidia.com/v1",
+    hint: "Free evaluation tier on build.nvidia.com. DiffusionGemma is multimodal and reads document images directly. The key is shown only once when you create it.",
+    keyUrl: "https://build.nvidia.com",
+  },
   gemini: {
     label: "Google Gemini",
     free: true,
@@ -76,7 +86,15 @@ const PRESETS: Record<Provider, Preset> = {
   },
 };
 
-const ORDER: Provider[] = ["offline", "gemini", "groq", "openrouter", "openai", "anthropic"];
+const ORDER: Provider[] = [
+  "offline",
+  "nvidia",
+  "gemini",
+  "groq",
+  "openrouter",
+  "openai",
+  "anthropic",
+];
 
 export default function Settings() {
   const toast = useToast();

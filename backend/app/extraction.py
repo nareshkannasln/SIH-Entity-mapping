@@ -19,6 +19,8 @@ from the doc type's field schema — no ``eval``, no positional arrays.
 import base64
 import json
 import logging
+import re
+from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any
 
@@ -104,19 +106,49 @@ def _prompt(doc_type: DocType) -> str:
     )
 
 
+_FENCE_RE = re.compile(r"\A```[A-Za-z0-9_-]*[ \t]*\r?\n?|\r?\n?```\Z")
+
+
+def _json_candidates(text: str) -> Iterator[str]:
+    """Yield progressively more forgiving readings of a model's JSON reply.
+
+    Structured outputs are supposed to make this unnecessary, but real endpoints
+    still bend the contract, and the payload is usually valid apart from its
+    wrapper — worth repairing rather than discarding.
+    """
+    s = text.strip()
+
+    # 1. As-is (with any markdown fence removed).
+    if s.startswith("```"):
+        s = _FENCE_RE.sub("", s).strip()
+    yield s
+
+    # 2. The widest brace-delimited span, for prose on either side.
+    i, j = s.find("{"), s.rfind("}")
+    if i != -1 and j > i:
+        yield s[i : j + 1]
+
+    # 3. A body whose opening brace is missing. NVIDIA's DiffusionGemma does this
+    #    under response_format=json_schema: the reply is a complete object except
+    #    it starts at the first key. Restore the brace rather than lose the data.
+    if not s.startswith("{") and s.endswith("}"):
+        yield "{" + s
+
+
 def _parse_json(text: str | None) -> dict[str, Any]:
     if not text:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Empty extraction result")
-    # Be tolerant of code fences some models emit despite instructions.
-    cleaned = text.strip()
-    if cleaned.startswith("```"):
-        cleaned = cleaned.strip("`")
-        cleaned = cleaned[cleaned.find("{") : cleaned.rfind("}") + 1]
-    try:
-        return json.loads(cleaned)
-    except json.JSONDecodeError as exc:
-        logger.error("Model returned non-JSON: %s", text[:500])
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Malformed extraction result") from exc
+
+    for candidate in _json_candidates(text):
+        try:
+            data = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(data, dict):
+            return data
+
+    logger.error("Model returned non-JSON: %s", text[:500])
+    raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Malformed extraction result")
 
 
 # --- OpenAI-compatible backend (Ollama, Gemini, etc.) ---
@@ -235,7 +267,8 @@ async def extract(file_bytes: bytes, content_type: str, doc_type: DocType) -> Ex
         )
         return ExtractionResult(data=data, engine=f"Anthropic · {cfg.model}")
 
-    # "openai", "gemini", "groq" and "openrouter" all use the OpenAI-compatible path.
+    # "openai", "gemini", "groq", "openrouter" and "nvidia" all expose an
+    # OpenAI-compatible endpoint, so they share this path.
     if not cfg.api_key:
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,

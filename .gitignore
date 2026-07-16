@@ -15,6 +15,9 @@ node_modules/
 frontend/dist/
 frontend/.vite/
 
+# Vendored llama.cpp binaries for Surya OCR (fetched per-platform, not committed)
+backend/vendor/
+
 # Misc
 .DS_Store
 *.log

@@ -91,19 +91,40 @@ All via environment (see `backend/.env.example`):
 |-----|---------|---------|
 | `MONGO_URI` / `MONGO_DB` | database | `mongodb://localhost:27017` / `docverify` |
 | `JWT_SECRET` | token signing — **must** override in prod | `change-me-in-production` |
-| `LLM_PROVIDER` | `openai` (OpenAI-compatible / Ollama) or `anthropic` | `openai` |
-| `LLM_BASE_URL` | OpenAI-compatible endpoint | `http://135.13.20.57:11434/v1` |
-| `LLM_MODEL` | extraction model — **must be vision-capable** | `qwen2.5vl:32b` |
-| `LLM_API_KEY` | key for the endpoint (Ollama ignores it) | `ollama` |
+| `LLM_PROVIDER` | `openai` (any OpenAI-compatible endpoint), `anthropic`, `gemini`, `groq`, `openrouter`, or `offline` | `offline` |
+| `LLM_BASE_URL` | OpenAI-compatible endpoint | `https://integrate.api.nvidia.com/v1` |
+| `LLM_MODEL` | extraction model — **must be vision-capable** | `google/diffusiongemma-26b-a4b-it` |
+| `LLM_API_KEY` | key for the endpoint (Ollama ignores it) | — |
 | `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL` | used when `LLM_PROVIDER=anthropic` | — / `claude-opus-4-8` |
+| `OCR_ENGINE` | when `LLM_PROVIDER=offline`: `tesseract` or `surya` | `tesseract` |
+| `LLAMA_CPP_BINARY` | path to `llama-server`, for `OCR_ENGINE=surya` | resolved from `PATH` |
 | `CORS_ORIGINS` | allowed SPA origins (comma-sep) | `http://localhost:5173` |
 
-**Self-hosted (default):** point `LLM_BASE_URL` at your Ollama server and pull a
-vision model: `ollama pull qwen2.5vl:32b`. A text-only model (e.g. `qwen3-coder`)
-will not work — it can't read the document images.
+> ⚠️ An admin can override the provider/model/key at runtime from the in-app
+> **Settings** page; that value is stored in MongoDB and **wins over every
+> variable above**. If changing `.env` appears to do nothing, a stored override
+> is the reason — check Settings first.
+
+**Hosted (default):** NVIDIA's `google/diffusiongemma-26b-a4b-it` — a multimodal
+model that handles OCR and document understanding in one call. Get a key at
+<https://build.nvidia.com> (shown only once) and set `LLM_API_KEY=nvapi-...`.
+Any other OpenAI-compatible endpoint works the same way; the model **must be
+vision-capable** — a text-only model can't read the document images.
+
+**Self-hosted:** point `LLM_BASE_URL` at your own Ollama server and pull a vision
+model: `ollama pull qwen2.5vl:32b`.
 
 **Claude:** set `LLM_PROVIDER=anthropic` and `ANTHROPIC_API_KEY`; optionally swap
 `ANTHROPIC_MODEL` to `claude-sonnet-5` / `claude-haiku-4-5` for cost.
+
+**Offline (no API key, no GPU):** `LLM_PROVIDER=offline` runs OCR locally, so
+documents never leave the machine — the right choice for real PII.
+
+- `OCR_ENGINE=tesseract` (default) — tiny, already in the Docker image.
+- `OCR_ENGINE=surya` — [Surya OCR 2](https://github.com/datalab-to/surya), much
+  stronger on scans. See `backend/requirements-surya.txt`: it needs CPU-pinned
+  torch wheels, an external `llama-server` binary, and downloads ~2GB of GGUF
+  weights on first use. GPL-3.0 — review before commercial use.
 
 ## API
 

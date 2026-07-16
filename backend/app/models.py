@@ -41,7 +41,7 @@ class ChangePasswordRequest(BaseModel):
 
 
 # --- LLM settings (admin-configurable at runtime) ---
-Provider = Literal["openai", "anthropic", "gemini", "groq", "openrouter", "offline"]
+Provider = Literal["openai", "anthropic", "gemini", "groq", "openrouter", "nvidia", "offline"]
 
 
 class LLMSettingsIn(BaseModel):

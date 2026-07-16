@@ -121,3 +121,35 @@ def test_empty_text_yields_nulls():
     result = extract_fields_from_text("", _marksheet())
     assert result["name"] is None
     assert set(result) == {"document_type", "name", "date_of_birth", "father_name", "roll_number"}
+
+
+def test_offline_extract_returns_fields_and_text():
+    """``extract()`` does ``data, text = offline_extract(...)`` — keep that contract.
+
+    Regression: this returned a bare dict, so every offline request unpacked the
+    dict's keys and blew up with a ValueError before reaching the caller.
+    """
+    from unittest.mock import patch
+
+    from app.offline_extraction import offline_extract
+
+    with patch("app.offline_extraction.to_images", return_value=[(b"x", "image/png")]), patch(
+        "app.offline_extraction._ocr_images", return_value="Name: Solo\nRoll Number: 42"
+    ), patch("app.offline_extraction.get_settings") as gs:
+        gs.return_value.ocr_engine = "tesseract"
+        data, text = offline_extract(b"x", "image/png", _marksheet())
+
+    assert data["name"] == "Solo"
+    assert text == "Name: Solo\nRoll Number: 42"
+
+
+def test_html_to_text_keeps_surya_lines_separate():
+    """Surya returns HTML blocks; tags must become newlines, not disappear.
+
+    If they collapse, ``Name: X`` runs into the next label and the rules break.
+    """
+    from app.offline_extraction import _html_to_text
+
+    assert _html_to_text("<p>Name: Test Person</p>") == "Name: Test Person"
+    assert _html_to_text("<p>Name: A</p><p>Gender: Male</p>") == "Name: A\nGender: Male"
+    assert _html_to_text("<p>Line one<br>Line two</p>") == "Line one\nLine two"
